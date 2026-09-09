@@ -53,7 +53,7 @@ md.renderer.rules.link_open = (tokens, index, options, environment, renderer) =>
   const href = token.attrGet('href')
   const lessonMatch = typeof href === 'string' ? href.match(/^(chapter\d{2})\.md(?:#.*)?$/) : null
   if (lessonMatch?.[1]) {
-    token.attrSet('href', `#${lessonMatch[1]}`)
+    token.attrSet('href', lessonPath(locale.value, lessonMatch[1]))
     token.attrSet('data-lesson-id', lessonMatch[1])
   }
   return renderLinkOpen
@@ -104,7 +104,20 @@ function storageKey(kind: string) {
   return `learning-vim:${kind}:${locale.value}:${lessonId.value}`
 }
 
+function lessonPath(targetLocale: Locale, id: string) {
+  return `/${targetLocale}/${id}/`
+}
+
+function routeFromLocation(): { locale: Locale; id: string } | undefined {
+  const match = window.location.pathname.match(/^\/(en|zh-CN|ja)\/(chapter\d{2})\/?$/)
+  if (match?.[1] && match[2]) return { locale: match[1] as Locale, id: match[2] }
+  const legacyId = window.location.hash.slice(1)
+  if (/^chapter\d{2}$/.test(legacyId)) return { locale: locale.value, id: legacyId }
+}
+
 function initialLocale(): Locale {
+  const pathLocale = window.location.pathname.match(/^\/(en|zh-CN|ja)\//)?.[1] as Locale | undefined
+  if (pathLocale) return pathLocale
   const saved = localStorage.getItem('learning-vim:locale') as Locale | null
   if (saved && ['en', 'zh-CN', 'ja'].includes(saved)) return saved
   const language = navigator.language.toLowerCase()
@@ -135,8 +148,9 @@ async function loadLesson() {
 function chooseLesson(id: string, updateHistory = true) {
   if (!lessons.value.some((lesson) => lesson.id === id)) return
   lessonId.value = id
-  if (updateHistory && window.location.hash !== `#${id}`) {
-    window.history.pushState(null, '', `#${id}`)
+  const path = lessonPath(locale.value, id)
+  if (updateHistory && window.location.pathname !== path) {
+    window.history.pushState(null, '', path)
   }
 }
 
@@ -146,8 +160,41 @@ function navigateLesson(offset: -1 | 1) {
 }
 
 function syncLessonFromLocation() {
-  const id = window.location.hash.slice(1)
-  if (/^chapter\d{2}$/.test(id)) chooseLesson(id, false)
+  const route = routeFromLocation()
+  if (!route || !lessons.value.some((lesson) => lesson.id === route.id)) return
+  locale.value = route.locale
+  chooseLesson(route.id, false)
+  const canonicalPath = lessonPath(route.locale, route.id)
+  if (window.location.pathname !== canonicalPath || window.location.hash) {
+    window.history.replaceState(null, '', canonicalPath)
+  }
+}
+
+function setMetaContent(selector: string, content: string) {
+  document.head.querySelector<HTMLMetaElement>(selector)?.setAttribute('content', content)
+}
+
+function updateDocumentMetadata() {
+  const lesson = currentLesson.value
+  if (!lesson) return
+  const title = `${lesson.titles[locale.value]} · Learning Vim`
+  const descriptions: Record<Locale, string> = {
+    en: `Learn ${lesson.titles.en} with an interactive Vim editor and hands-on exercises.`,
+    'zh-CN': `通过交互式 Vim 编辑器和动手练习学习${lesson.titles['zh-CN']}。`,
+    ja: `インタラクティブな Vim エディターと演習で${lesson.titles.ja}を学びます。`,
+  }
+  const url = new URL(lessonPath(locale.value, lesson.id), 'https://learning-vim.phpz.org').href
+  const description = descriptions[locale.value]
+  document.title = title
+  document.documentElement.lang = locale.value
+  document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', url)
+  setMetaContent('meta[name="description"]', description)
+  setMetaContent('meta[property="og:title"]', title)
+  setMetaContent('meta[property="og:description"]', description)
+  setMetaContent('meta[property="og:url"]', url)
+  setMetaContent('meta[property="og:locale"]', locale.value === 'en' ? 'en_US' : locale.value.replace('-', '_'))
+  setMetaContent('meta[name="twitter:title"]', title)
+  setMetaContent('meta[name="twitter:description"]', description)
 }
 
 function syncMobileViewport(event: MediaQueryListEvent) {
@@ -240,12 +287,15 @@ watch(buffer, (value) => {
 
 watch(locale, async (value) => {
   localStorage.setItem('learning-vim:locale', value)
+  if (manifest.value && currentLesson.value) {
+    window.history.replaceState(null, '', lessonPath(value, lessonId.value))
+  }
   await loadLesson()
 })
 
 watch(lessonId, loadLesson)
 watch([currentLesson, locale], ([lesson]) => {
-  document.title = lesson ? `${lesson.titles[locale.value]} · Learning Vim` : 'Learning Vim'
+  if (lesson) updateDocumentMetadata()
 })
 
 onMounted(async () => {
@@ -262,19 +312,19 @@ onMounted(async () => {
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     manifest.value = await response.json()
     syncLessonFromLocation()
-    if (!window.location.hash) window.history.replaceState(null, '', `#${lessonId.value}`)
+    if (!routeFromLocation()) window.history.replaceState(null, '', lessonPath(locale.value, lessonId.value))
     await nextTick()
     await loadLesson()
   } catch (reason) {
     error.value = `${t.value.error} ${String(reason)}`
     loading.value = false
   }
-  window.addEventListener('hashchange', syncLessonFromLocation)
+  window.addEventListener('popstate', syncLessonFromLocation)
   mobileMediaQuery.addEventListener('change', syncMobileViewport)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('hashchange', syncLessonFromLocation)
+  window.removeEventListener('popstate', syncLessonFromLocation)
   mobileMediaQuery.removeEventListener('change', syncMobileViewport)
 })
 </script>

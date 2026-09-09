@@ -6,7 +6,7 @@
   "scripts": {
     "sync:content": "node scripts/sync-content.mjs",
     "dev": "pnpm sync:content && vite",
-    "build": "pnpm sync:content && vue-tsc --noEmit && vite build",
+    "build": "pnpm sync:content && vue-tsc --noEmit && vite build && node scripts/generate-seo-pages.mjs",
     "preview": "vite preview",
     "check": "vue-tsc --noEmit",
     "test": "vitest run"

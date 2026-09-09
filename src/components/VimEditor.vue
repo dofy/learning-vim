@@ -7,6 +7,7 @@ import { drawSelection, EditorView, highlightSpecialChars, keymap, lineNumbers }
 import { Vim, vim, getCM } from '@replit/codemirror-vim'
 import { tags } from '@lezer/highlight'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { shouldLoadMarkdownLanguage, shouldReconfigureLanguage } from '../editorLanguage'
 import type { EditorStatus, VimMapping, VimPreferences } from '../types'
 import { attachVimOptionController, registerVimOptionBridge, type VimOptionController } from '../vimBridge'
 
@@ -73,7 +74,7 @@ function indentationExtension(preferences: VimPreferences): Extension {
 }
 
 function languageExtension(preferences: VimPreferences): Extension {
-  return preferences.filetypeDetection ? markdown() : []
+  return shouldLoadMarkdownLanguage(preferences) ? markdown() : []
 }
 
 function highlightingExtension(preferences: VimPreferences): Extension {
@@ -97,7 +98,7 @@ function applyEditorPreferences(changed?: Set<keyof VimPreferences>) {
   if (includes('shiftWidth', 'expandTab')) {
     effects.push(indentationCompartment.reconfigure(indentationExtension(runtimePreferences)))
   }
-  if (includes('filetypeDetection')) {
+  if (shouldReconfigureLanguage(changed)) {
     effects.push(languageCompartment.reconfigure(languageExtension(runtimePreferences)))
   }
   if (includes('syntaxHighlighting')) {

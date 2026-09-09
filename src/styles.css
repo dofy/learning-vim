@@ -17,6 +17,9 @@
 * { box-sizing: border-box; }
 html, body, #app { height: 100%; margin: 0; }
 body { min-width: 320px; }
+.seo-fallback { max-width: 760px; margin: 0 auto; padding: 48px 24px; line-height: 1.7; }
+.seo-fallback nav { display: flex; flex-wrap: wrap; gap: 16px; }
+.seo-fallback a { color: #166b74; }
 button, select, textarea { font: inherit; }
 button, select { color: inherit; }
 button { cursor: pointer; }
@@ -44,7 +47,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, .cm-editor.c
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 .sync-note { color: var(--muted); font-size: 12px; }
 select, .quiet-button {
-  border: 1px solid var(--line); background: transparent; padding: 7px 10px; border-radius: 4px;
+  border: 1px solid var(--line); background: transparent; padding: 7px 10px; border-radius: 4px; font-size: 13px;
 }
 .quiet-button:hover, select:hover { border-color: var(--navy); }
 .mobile-config-button { display: none; }
