@@ -10,9 +10,9 @@ export interface VimOptionController {
 const controllers = new WeakMap<object, VimOptionController>()
 let registered = false
 
-function normalizeWidth(value: number) {
+function normalizeWidth(value: number, minimum = 1) {
   const width = Math.round(Number(value))
-  return Number.isFinite(width) ? Math.min(16, Math.max(1, width)) : 4
+  return Number.isFinite(width) ? Math.min(16, Math.max(minimum, width)) : minimum
 }
 
 function controllerFor(cm?: object) {
@@ -29,12 +29,12 @@ function defineBooleanOption(name: string, key: keyof VimPreferences, aliases: s
   })
 }
 
-function defineNumberOption(name: string, key: keyof VimPreferences, aliases: string[] = []) {
+function defineNumberOption(name: string, key: keyof VimPreferences, aliases: string[] = [], minimum = 1) {
   Vim.defineOption(name, defaultPreferences[key] as number, 'number', aliases, (value, cm) => {
     const controller = controllerFor(cm)
     if (!controller) return defaultPreferences[key]
     if (value === undefined) return controller.preferences[key]
-    const width = normalizeWidth(value)
+    const width = normalizeWidth(value, minimum)
     controller.update({ [key]: width } as Partial<VimPreferences>)
     return width
   })
@@ -58,7 +58,7 @@ export function registerVimOptionBridge() {
   defineBooleanOption('smartindent', 'smartIndent', ['si'])
   defineBooleanOption('expandtab', 'expandTab', ['et'])
   defineNumberOption('tabstop', 'tabSize', ['ts'])
-  defineNumberOption('softtabstop', 'softTabSize', ['sts'])
+  defineNumberOption('softtabstop', 'softTabSize', ['sts'], 0)
   defineNumberOption('shiftwidth', 'shiftWidth', ['sw'])
 
   Vim.defineEx('syntax', 'sy', (cm, params) => {

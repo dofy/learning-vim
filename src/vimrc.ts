@@ -1,18 +1,18 @@
 import type { VimMapping, VimPreferences } from './types'
 
 export const defaultPreferences: VimPreferences = {
-  lineNumbers: true,
+  lineNumbers: false,
   relativeLineNumbers: false,
-  lineWrapping: false,
-  highlightSearch: true,
-  autoIndent: true,
-  smartIndent: true,
-  tabSize: 4,
-  softTabSize: 4,
-  shiftWidth: 4,
+  lineWrapping: true,
+  highlightSearch: false,
+  autoIndent: false,
+  smartIndent: false,
+  tabSize: 8,
+  softTabSize: 0,
+  shiftWidth: 8,
   expandTab: false,
-  filetypeDetection: true,
-  syntaxHighlighting: true,
+  filetypeDetection: false,
+  syntaxHighlighting: false,
 }
 
 const mappingModes: Record<string, VimMapping['mode']> = {
@@ -68,7 +68,7 @@ export function parseVimrc(source: string): {
         else if (option === 'expandtab') preferences.expandTab = true
         else if (option === 'noexpandtab') preferences.expandTab = false
         else if (/^tabstop=[1-9]\d*$/.test(option)) preferences.tabSize = Number(option.split('=')[1])
-        else if (/^softtabstop=[1-9]\d*$/.test(option)) preferences.softTabSize = Number(option.split('=')[1])
+        else if (/^softtabstop=(?:0|[1-9]\d*)$/.test(option)) preferences.softTabSize = Number(option.split('=')[1])
         else if (/^shiftwidth=[1-9]\d*$/.test(option)) preferences.shiftWidth = Number(option.split('=')[1])
         else warnings.push(`Line ${index + 1}: unsupported option ${option}`)
       }

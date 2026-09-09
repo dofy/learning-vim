@@ -2,6 +2,23 @@ import { describe, expect, it } from 'vitest'
 import { parseVimrc } from './vimrc'
 
 describe('parseVimrc', () => {
+  it('uses Vim defaults when the config is empty', () => {
+    expect(parseVimrc('\n" no user settings\n').preferences).toEqual({
+      lineNumbers: false,
+      relativeLineNumbers: false,
+      lineWrapping: true,
+      highlightSearch: false,
+      autoIndent: false,
+      smartIndent: false,
+      tabSize: 8,
+      softTabSize: 0,
+      shiftWidth: 8,
+      expandTab: false,
+      filetypeDetection: false,
+      syntaxHighlighting: false,
+    })
+  })
+
   it('enables and disables syntax highlighting', () => {
     expect(parseVimrc('syntax off').preferences.syntaxHighlighting).toBe(false)
     expect(parseVimrc('syntax on').preferences.syntaxHighlighting).toBe(true)
@@ -35,7 +52,7 @@ syntax on`)
   })
 
   it('parses negative boolean options and warns about unknown settings', () => {
-    const result = parseVimrc('set nonumber norelativenumber nohlsearch noautoindent nosmartindent noexpandtab mystery')
+    const result = parseVimrc('set nonumber norelativenumber nohlsearch noautoindent nosmartindent noexpandtab softtabstop=0 mystery')
 
     expect(result.preferences).toMatchObject({
       lineNumbers: false,
@@ -44,6 +61,7 @@ syntax on`)
       autoIndent: false,
       smartIndent: false,
       expandTab: false,
+      softTabSize: 0,
     })
     expect(result.warnings).toEqual(['Line 1: unsupported option mystery'])
   })
