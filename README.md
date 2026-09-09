@@ -105,12 +105,13 @@ moving between lessons; add them to the config panel to keep them after reload.
 
 The application remains a static PWA: no account, database, or server is needed.
 A scheduled production build checks out the newest `dofy/learn-vim` course
-every day, while every application change passes the same build in CI. When
-GitHub Pages is selected as the repository's Pages source, setting the
-repository variable `ENABLE_GITHUB_PAGES=true` also publishes that daily build.
+every day, while every application change passes the same build in CI. Pushes
+to `main`, scheduled content refreshes, and manual workflow runs deploy the
+verified `dist` output to the existing Cloudflare Pages project. The workflow
+uses repository secrets named `CLOUDFLARE_ACCOUNT_ID` and
+`CLOUDFLARE_API_TOKEN`; the token only needs Cloudflare Pages edit access.
 
-The generated site includes `public/CNAME` for `learning-vim.phpz.org`. Keep the
-deployment variable disabled until the Pages project and DNS record are ready.
+The generated site includes `public/CNAME` for `learning-vim.phpz.org`.
 
 ## Engine boundary
 
