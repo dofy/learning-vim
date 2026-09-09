@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 - 2026-09-09
+
+- Refresh the displayed application version for the production release.
+
 ## 1.0.1 - 2026-09-09
 
 - Update the displayed application version for the first post-MVP release.
