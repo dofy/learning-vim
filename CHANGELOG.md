@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 - 2026-09-09
+
+- Update the displayed application version for the first post-MVP release.
+- Improve README wordmark contrast for GitHub's dark theme.
+
 ## 1.0.0 - 2026-09-09
 
 - Ship the multilingual course as an installable, offline static PWA.
