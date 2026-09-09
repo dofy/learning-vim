@@ -1,0 +1,180 @@
+:root {
+  color: #17324d;
+  background: #f3f0e8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'PingFang SC', 'Segoe UI', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --navy: #17324d;
+  --navy-deep: #102439;
+  --paper: #f3f0e8;
+  --paper-bright: #fbfaf6;
+  --orange: #e5663a;
+  --sea: #73a6a2;
+  --line: #c9c6bc;
+  --muted: #64717c;
+}
+
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; }
+body { min-width: 320px; }
+button, select, textarea { font: inherit; }
+button, select { color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, select:focus-visible, textarea:focus-visible, .cm-editor.cm-focused {
+  outline: 3px solid rgba(229, 102, 58, 0.5);
+  outline-offset: 2px;
+}
+
+.app-shell { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  flex: 0 0 58px;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-bright);
+}
+.brand { display: flex; align-items: center; gap: 10px; color: var(--navy); text-decoration: none; font-weight: 700; }
+.brand-version { margin-left: -3px; color: var(--muted); font: 500 10px 'IBM Plex Mono', ui-monospace, monospace; }
+.brand-mark {
+  display: grid; place-items: center; width: 30px; height: 30px;
+  background: var(--navy); color: var(--paper); font: 600 17px/1 'IBM Plex Mono', monospace;
+  clip-path: polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%);
+}
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
+.sync-note { color: var(--muted); font-size: 12px; }
+select, .quiet-button {
+  border: 1px solid var(--line); background: transparent; padding: 7px 10px; border-radius: 4px;
+}
+.quiet-button:hover, select:hover { border-color: var(--navy); }
+.view-controls { display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 4px; }
+.view-button { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 0; border-radius: 2px; color: var(--muted); background: transparent; font-size: 12px; }
+.view-button:hover { color: var(--navy); background: #ece9e1; }
+.view-button.active { color: var(--navy); background: #e3dfd5; }
+.view-icon { width: 13px; height: 11px; border: 1px solid currentColor; }
+.nav-icon { box-shadow: inset 4px 0 currentColor; }
+.lesson-icon { background: linear-gradient(to right, transparent 32%, currentColor 32%, currentColor 39%, transparent 39%); }
+.update-banner { padding: 8px 20px; color: white; background: var(--orange); text-align: center; font-size: 13px; }
+.update-banner button { margin-left: 8px; border: 0; border-bottom: 1px solid currentColor; color: white; background: transparent; }
+
+.site-footer {
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--paper-bright);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.site-footer a { color: var(--navy); text-underline-offset: 2px; }
+.footer-source { margin-left: auto; }
+
+.workspace { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 250px minmax(0, 1fr); overflow: hidden; }
+.workspace.nav-hidden { grid-template-columns: minmax(0, 1fr); }
+.course-map { min-height: 0; overflow-y: auto; border-right: 1px solid var(--line); background: #e9e5db; padding: 22px 14px; }
+.course-map-heading { display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px; }
+.course-map-heading h1 { margin: 0; font-size: 16px; }
+.course-map-heading span { color: var(--muted); font: 500 12px 'IBM Plex Mono', monospace; }
+.progress-track { height: 3px; margin: 12px 8px 18px; background: #d4d0c6; }
+.progress-track span { display: block; height: 100%; background: var(--orange); transition: width 180ms ease-out; }
+.course-map nav { display: grid; gap: 3px; }
+.course-map nav button {
+  min-width: 0; display: grid; grid-template-columns: 28px minmax(0, 1fr) 8px; align-items: center;
+  gap: 8px; padding: 9px 8px; border: 0; border-radius: 3px; background: transparent; text-align: left;
+}
+.course-map nav button:hover { background: rgba(23, 50, 77, 0.06); }
+.course-map nav button.active { color: white; background: var(--navy); }
+.chapter-index { color: var(--muted); font: 500 11px 'IBM Plex Mono', monospace; }
+.active .chapter-index { color: #b7c8d5; }
+.completion-dot { width: 7px; height: 7px; border: 1px solid #969d9f; border-radius: 50%; }
+.done .completion-dot { border-color: var(--sea); background: var(--sea); }
+
+.learning-area { min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(320px, 0.88fr) minmax(420px, 1.12fr); overflow: hidden; }
+.learning-area.lesson-hidden { grid-template-columns: minmax(0, 1fr); }
+.lesson-pane, .practice-pane { min-width: 0; min-height: 0; height: 100%; }
+.lesson-pane { overflow-y: auto; overscroll-behavior: contain; background: var(--paper-bright); }
+.practice-pane { display: flex; flex-direction: column; overflow: hidden; background: var(--navy-deep); }
+.pane-heading {
+  position: sticky; top: 0; z-index: 2; min-height: 48px; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 22px; border-bottom: 1px solid var(--line);
+  background: rgba(251, 250, 246, 0.94); backdrop-filter: blur(10px); font-size: 13px; font-weight: 600;
+}
+.practice-heading { position: relative; color: #dce6ed; border-color: #31516b; background: var(--navy-deep); }
+.practice-heading > div { display: flex; align-items: center; gap: 5px; color: #96a9b8; font-size: 11px; font-weight: 400; }
+kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #dce6ed; font: 500 10px 'IBM Plex Mono', monospace; }
+.complete-button, .reset-button { border: 0; background: transparent; font-size: 12px; }
+.complete-button { color: var(--orange); }
+.complete-button.completed { color: #518c86; }
+.reset-button { margin-left: 10px; color: #dce6ed; text-decoration: underline; text-underline-offset: 3px; }
+.lesson-copy { max-width: 760px; padding: 28px clamp(24px, 4vw, 54px) 80px; color: #233b4f; font-size: 15px; line-height: 1.8; }
+.lesson-copy h1 { margin: 0 0 28px; color: var(--navy); font-size: clamp(25px, 2.4vw, 38px); line-height: 1.18; letter-spacing: -0.03em; }
+.lesson-copy h2 { margin: 42px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 20px; }
+.lesson-copy h3 { margin-top: 28px; font-size: 16px; }
+.lesson-copy p, .lesson-copy ul, .lesson-copy ol { max-width: 72ch; }
+.lesson-copy blockquote { margin: 22px 0; padding: 12px 18px; border-left: 4px solid var(--orange); background: #f0e7dc; }
+.lesson-copy blockquote p { margin: 0; }
+.lesson-copy code { color: #9f3e20; font: 500 0.9em 'IBM Plex Mono', monospace; }
+.lesson-copy pre { overflow: auto; padding: 16px; color: #e5edf2; background: var(--navy); }
+.lesson-copy pre code { color: inherit; }
+.lesson-copy a { color: #166b74; text-underline-offset: 3px; }
+.state-message { padding: 32px; color: var(--muted); }
+.state-message.error { color: #a63726; }
+
+.editor-host { flex: 1; min-height: 0; overflow: hidden; }
+.editor-host .cm-editor { height: 100%; color: #dce6ed; background: var(--navy-deep); font: 14px/1.65 'IBM Plex Mono', monospace; }
+.editor-host .cm-scroller { overflow: auto; overscroll-behavior: contain; }
+.editor-host .cm-gutters { color: #627c90; border: 0; background: #132a40; }
+.editor-host .cm-activeLine, .editor-host .cm-activeLineGutter { background: rgba(115, 166, 162, 0.09); }
+.editor-host .cm-selectionBackground, .editor-host .cm-content ::selection { background: #43637b !important; }
+.editor-host .cm-cursor { border-left-color: var(--orange); border-left-width: 2px; }
+.editor-host .cm-vim-panel { padding: 5px 10px; color: #dce6ed; background: #0c1d2d; font: 12px 'IBM Plex Mono', monospace; }
+
+.config-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(8, 23, 35, 0.62); }
+.config-panel { width: min(620px, 100%); padding: 22px; border-top: 5px solid var(--orange); background: var(--paper-bright); box-shadow: 0 20px 70px rgba(0, 0, 0, 0.24); }
+.config-heading { display: flex; align-items: center; justify-content: space-between; }
+.config-heading h2 { margin: 0; font-size: 20px; }
+.config-heading button { border: 0; background: transparent; font-size: 25px; }
+.config-panel p { color: var(--muted); font-size: 13px; }
+.config-panel textarea { width: 100%; min-height: 220px; resize: vertical; padding: 14px; border: 1px solid var(--line); color: #e7edf2; background: var(--navy-deep); font: 13px/1.65 'IBM Plex Mono', monospace; }
+.config-warnings { max-height: 100px; overflow: auto; color: #a63726; font-size: 12px; }
+.apply-button { margin-top: 14px; padding: 9px 16px; border: 0; color: white; background: var(--orange); font-weight: 600; }
+.mobile-tabs { display: none; }
+
+@media (max-width: 1050px) {
+  .workspace { grid-template-columns: 210px minmax(0, 1fr); }
+  .workspace.nav-hidden { grid-template-columns: minmax(0, 1fr); }
+  .learning-area { grid-template-columns: minmax(300px, 0.8fr) minmax(380px, 1.2fr); }
+  .learning-area.lesson-hidden { grid-template-columns: minmax(0, 1fr); }
+  .view-button { font-size: 0; gap: 0; }
+}
+
+@media (max-width: 720px) {
+  .topbar { padding: 0 12px; }
+  .sync-note, .quiet-button { display: none; }
+  .workspace, .workspace.nav-hidden { display: flex; flex-direction: column; }
+  .course-map { overflow-x: auto; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .course-map-heading, .progress-track { display: none; }
+  .course-map nav { display: flex; width: max-content; }
+  .course-map nav button { width: 52px; display: block; padding: 8px; text-align: center; }
+  .course-map nav button > span:nth-child(2), .completion-dot { display: none; }
+  .chapter-index { font-size: 12px; }
+  .learning-area, .learning-area.lesson-hidden { flex: 1; min-height: 0; display: block; }
+  .mobile-tabs { display: grid; grid-template-columns: 1fr 1fr; height: 44px; background: var(--paper); }
+  .mobile-tabs button { border: 0; border-bottom: 2px solid transparent; background: transparent; }
+  .mobile-tabs button.active { border-bottom-color: var(--orange); }
+  .lesson-pane, .practice-pane { height: calc(100% - 44px); min-height: 0; }
+  .mobile-tabs.single { grid-template-columns: 1fr; }
+  .site-footer { flex-basis: 28px; justify-content: space-between; padding: 0 12px; }
+  .footer-source { display: none; }
+  .mobile-hidden { display: none; }
+  .lesson-copy { padding: 24px 20px 70px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+}
