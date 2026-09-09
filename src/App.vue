@@ -315,10 +315,10 @@ onMounted(async () => {
     </main>
 
     <footer class="site-footer">
-      <span>© 2026 Seven Yu</span>
-      <a href="https://learning-vim.phpz.org/">learning-vim.phpz.org</a>
+      <span>⌨️ © 2026 Seven Yu</span>
+      <a href="https://learning-vim.phpz.org/">🌐 learning-vim.phpz.org</a>
       <span class="footer-source">
-        {{ t.contentBy }}
+        📚 {{ t.contentBy }}
         <a href="https://github.com/dofy/learn-vim" target="_blank" rel="noreferrer">dofy/learn-vim</a>
       </span>
     </footer>
