@@ -1,5 +1,9 @@
 # Learning Vim
 
+<p align="center">
+  <img src="public/learning-vim-logo.svg" alt="learning vim" width="560">
+</p>
+
 **Read the lesson. Put your hands on the keys. Learn Vim without leaving the page.**
 
 [![Verify](https://github.com/dofy/learning-vim/actions/workflows/verify.yml/badge.svg)](https://github.com/dofy/learning-vim/actions/workflows/verify.yml)
