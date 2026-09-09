@@ -30,6 +30,7 @@ somewhere else. Learning Vim keeps the whole loop in one focused workspace:
 - ⌨️ Practice directly on a copy of the lesson with Vim keybindings.
 - 🎛️ Hide the course map or lesson and give the editor more room.
 - 💾 Keep edited buffers, language, progress, and preferences on the device.
+- 📦 Export and import learning data when moving to another browser.
 - 📴 Install the site as a PWA and keep the course available offline.
 - ⚙️ Load a safe `.vimrc` subset for mappings and common editor options.
 
@@ -81,29 +82,51 @@ pnpm build
 pnpm preview
 ```
 
-## What the MVP supports
+## What version 1 supports
 
 The current editor uses CodeMirror 6 with `@replit/codemirror-vim`. It covers
-the everyday Vim motions and editing workflow needed for the first usable
-release. The `.vimrc` parser intentionally supports a safe subset:
+the everyday Vim motions and editing workflow used throughout the course.
+Lessons have stable deep links, previous/next navigation, cursor and buffer
+status, local autosave, and portable learning-data backups. The `.vimrc` parser
+intentionally supports a safe subset:
 
 - `syntax on` / `syntax off` for Markdown highlighting
-- `set number`, `relativenumber`, `wrap`, and `tabstop`
+- `filetype on` / `filetype off` for Markdown detection
+- `set number`, `relativenumber`, `hlsearch`, `wrap`, `autoindent`, and
+  `smartindent`
+- `set tabstop`, `softtabstop`, `shiftwidth`, and `expandtab`
 - `map`, `noremap`, `nmap`, `nnoremap`, `imap`, `inoremap`, `vmap`, and their
   matching `unmap` commands
 - `let mapleader = "..."`
 
-This is not yet a complete Vim runtime. Real buffers and windows, external shell
-commands, and arbitrary plugins belong to the next engine rather than being
-poorly imitated in the MVP.
+These options work both when loaded from the Vim config panel and when entered
+as Ex commands in the practice editor. Runtime settings stay active while
+moving between lessons; add them to the config panel to keep them after reload.
+
+The application remains a static PWA: no account, database, or server is needed.
+A scheduled production build checks out the newest `dofy/learn-vim` course
+every day, while every application change passes the same build in CI. When
+GitHub Pages is selected as the repository's Pages source, setting the
+repository variable `ENABLE_GITHUB_PAGES=true` also publishes that daily build.
+
+The generated site includes `public/CNAME` for `learning-vim.phpz.org`. Keep the
+deployment variable disabled until the Pages project and DNS record are ready.
+
+## Engine boundary
+
+Version 1 deliberately uses the maintained CodeMirror Vim engine. The available
+Vim WebAssembly port is still experimental, depends on browser shared-memory
+features, and embeds an older Vim runtime. Real buffers and windows, external
+shell commands, arbitrary Vimscript, and plugins therefore remain outside the
+stable editor. The editor component is isolated so a production-ready Vim/Wasm
+engine can replace it later without rewriting the course interface.
 
 ## Next on the voyage
 
-- A replaceable real Vim / WebAssembly engine
-- Exercise checkpoints based on editor state
-- Richer file and buffer navigation
-- Optional cross-device progress sync
-- Automated upstream content update pull requests
+- Optional real Vim / WebAssembly lab when browser support is dependable
+- Structured exercises published alongside the source lessons
+- More language parsers for future non-Markdown practice files
+- Optional account-based sync without removing local-first usage
 
 Course content comes from [`dofy/learn-vim`](https://github.com/dofy/learn-vim).
 The interactive web application is maintained by

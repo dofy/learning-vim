@@ -1,6 +1,10 @@
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
 import path from 'node:path'
 import process from 'node:process'
+import { promisify } from 'node:util'
+
+const execFileAsync = promisify(execFile)
 
 const appRoot = path.resolve(import.meta.dirname, '..')
 const sourceRoot = path.resolve(
@@ -15,6 +19,15 @@ const lessonIds = Array.from(
 
 function titleOf(markdown, fallback) {
   return markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() || fallback
+}
+
+async function gitValue(args, fallback) {
+  try {
+    const { stdout } = await execFileAsync('git', ['-C', sourceRoot, ...args])
+    return stdout.trim() || fallback
+  } catch {
+    return fallback
+  }
 }
 
 await rm(outputRoot, { recursive: true, force: true })
@@ -42,10 +55,14 @@ for (const id of lessonIds) {
   lessons.push({ id, titles, files })
 }
 
+const sourceRevision = await gitValue(['rev-parse', 'HEAD'], 'local-content')
+const generatedAt = await gitValue(['show', '-s', '--format=%cI', 'HEAD'], new Date().toISOString())
+
 const manifest = {
-  schemaVersion: 1,
-  generatedAt: new Date().toISOString(),
+  schemaVersion: 2,
+  generatedAt,
   source: 'dofy/learn-vim',
+  sourceRevision,
   locales,
   lessons,
 }

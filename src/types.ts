@@ -10,6 +10,7 @@ export interface CourseManifest {
   schemaVersion: number
   generatedAt: string
   source: string
+  sourceRevision?: string
   locales: Locale[]
   lessons: Lesson[]
 }
@@ -18,7 +19,14 @@ export interface VimPreferences {
   lineNumbers: boolean
   relativeLineNumbers: boolean
   lineWrapping: boolean
+  highlightSearch: boolean
+  autoIndent: boolean
+  smartIndent: boolean
   tabSize: number
+  softTabSize: number
+  shiftWidth: number
+  expandTab: boolean
+  filetypeDetection: boolean
   syntaxHighlighting: boolean
 }
 
@@ -28,4 +36,10 @@ export interface VimMapping {
   mode: 'normal' | 'insert' | 'visual'
   unmap?: boolean
   noremap?: boolean
+}
+
+export interface EditorStatus {
+  cursorLine: number
+  totalLines: number
+  dirty: boolean
 }

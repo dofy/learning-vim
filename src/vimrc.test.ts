@@ -9,7 +9,43 @@ describe('parseVimrc', () => {
   })
 
   it('warns about unsupported syntax commands', () => {
-    expect(parseVimrc('syntax manual').warnings).toEqual(['Line 1: ignored in the web MVP'])
+    expect(parseVimrc('syntax manual').warnings).toEqual(['Line 1: ignored in the web editor'])
+  })
+
+  it('parses the lesson four editor options', () => {
+    const result = parseVimrc(`set number relativenumber hlsearch autoindent smartindent
+set tabstop=8 softtabstop=2 shiftwidth=6 expandtab
+filetype on
+syntax on`)
+
+    expect(result.preferences).toMatchObject({
+      lineNumbers: true,
+      relativeLineNumbers: true,
+      highlightSearch: true,
+      autoIndent: true,
+      smartIndent: true,
+      tabSize: 8,
+      softTabSize: 2,
+      shiftWidth: 6,
+      expandTab: true,
+      filetypeDetection: true,
+      syntaxHighlighting: true,
+    })
+    expect(result.warnings).toEqual([])
+  })
+
+  it('parses negative boolean options and warns about unknown settings', () => {
+    const result = parseVimrc('set nonumber norelativenumber nohlsearch noautoindent nosmartindent noexpandtab mystery')
+
+    expect(result.preferences).toMatchObject({
+      lineNumbers: false,
+      relativeLineNumbers: false,
+      highlightSearch: false,
+      autoIndent: false,
+      smartIndent: false,
+      expandTab: false,
+    })
+    expect(result.warnings).toEqual(['Line 1: unsupported option mystery'])
   })
 
   it('preserves recursive and non-recursive mapping semantics', () => {

@@ -39,9 +39,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, .cm-editor.c
 .brand { display: flex; align-items: center; gap: 10px; color: var(--navy); text-decoration: none; font-weight: 700; }
 .brand-version { margin-left: -3px; color: var(--muted); font: 500 10px 'IBM Plex Mono', ui-monospace, monospace; }
 .brand-mark {
-  display: grid; place-items: center; width: 30px; height: 30px;
-  background: var(--navy); color: var(--paper); font: 600 17px/1 'IBM Plex Mono', monospace;
-  clip-path: polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%);
+  display: block; width: 30px; height: 30px;
 }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 .sync-note { color: var(--muted); font-size: 12px; }
@@ -49,6 +47,7 @@ select, .quiet-button {
   border: 1px solid var(--line); background: transparent; padding: 7px 10px; border-radius: 4px;
 }
 .quiet-button:hover, select:hover { border-color: var(--navy); }
+.mobile-config-button { display: none; }
 .view-controls { display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 4px; }
 .view-button { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 0; border-radius: 2px; color: var(--muted); background: transparent; font-size: 12px; }
 .view-button:hover { color: var(--navy); background: #ece9e1; }
@@ -76,6 +75,7 @@ select, .quiet-button {
 
 .workspace { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 250px minmax(0, 1fr); overflow: hidden; }
 .workspace.nav-hidden { grid-template-columns: minmax(0, 1fr); }
+.navigation-shell { display: contents; }
 .course-map { min-height: 0; overflow-y: auto; border-right: 1px solid var(--line); background: #e9e5db; padding: 22px 14px; }
 .course-map-heading { display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px; }
 .course-map-heading h1 { margin: 0; font-size: 16px; }
@@ -105,12 +105,19 @@ select, .quiet-button {
   background: rgba(251, 250, 246, 0.94); backdrop-filter: blur(10px); font-size: 13px; font-weight: 600;
 }
 .practice-heading { position: relative; color: #dce6ed; border-color: #31516b; background: var(--navy-deep); }
-.practice-heading > div { display: flex; align-items: center; gap: 5px; color: #96a9b8; font-size: 11px; font-weight: 400; }
+.practice-heading > div { display: flex; align-items: center; gap: 7px; color: #96a9b8; font-size: 11px; font-weight: 400; }
+.practice-title > span:first-child { color: #dce6ed; font-size: 13px; font-weight: 600; }
+.buffer-state { padding-left: 8px; border-left: 1px solid #31516b; color: #86a2b5; }
+.buffer-state.modified { color: #83c5bd; }
+.practice-actions { white-space: nowrap; }
 kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #dce6ed; font: 500 10px 'IBM Plex Mono', monospace; }
 .complete-button, .reset-button { border: 0; background: transparent; font-size: 12px; }
 .complete-button { color: var(--orange); }
 .complete-button.completed { color: #518c86; }
 .reset-button { margin-left: 10px; color: #dce6ed; text-decoration: underline; text-underline-offset: 3px; }
+.lesson-step { width: 26px; height: 24px; border: 1px solid #45647c; border-radius: 3px; color: #dce6ed; background: transparent; line-height: 1; }
+.lesson-step:hover:not(:disabled) { border-color: #8fb9b5; background: rgba(115, 166, 162, 0.12); }
+.lesson-step:disabled { cursor: not-allowed; opacity: 0.35; }
 .lesson-copy { max-width: 760px; padding: 28px clamp(24px, 4vw, 54px) 80px; color: #233b4f; font-size: 15px; line-height: 1.8; }
 .lesson-copy h1 { margin: 0 0 28px; color: var(--navy); font-size: clamp(25px, 2.4vw, 38px); line-height: 1.18; letter-spacing: -0.03em; }
 .lesson-copy h2 { margin: 42px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 20px; }
@@ -132,10 +139,12 @@ kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #d
 .editor-host .cm-activeLine, .editor-host .cm-activeLineGutter { background: rgba(115, 166, 162, 0.09); }
 .editor-host .cm-selectionBackground, .editor-host .cm-content ::selection { background: #43637b !important; }
 .editor-host .cm-cursor { border-left-color: var(--orange); border-left-width: 2px; }
+.editor-host .vim-no-hlsearch .cm-searchMatch,
+.editor-host .vim-no-hlsearch .cm-searchMatch-selected { background-color: transparent !important; outline: 0 !important; }
 .editor-host .cm-vim-panel { padding: 5px 10px; color: #dce6ed; background: #0c1d2d; font: 12px 'IBM Plex Mono', monospace; }
 
 .config-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(8, 23, 35, 0.62); }
-.config-panel { width: min(620px, 100%); padding: 22px; border-top: 5px solid var(--orange); background: var(--paper-bright); box-shadow: 0 20px 70px rgba(0, 0, 0, 0.24); }
+.config-panel { width: min(620px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 22px; border-top: 5px solid var(--orange); background: var(--paper-bright); box-shadow: 0 20px 70px rgba(0, 0, 0, 0.24); }
 .config-heading { display: flex; align-items: center; justify-content: space-between; }
 .config-heading h2 { margin: 0; font-size: 20px; }
 .config-heading button { border: 0; background: transparent; font-size: 25px; }
@@ -143,6 +152,14 @@ kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #d
 .config-panel textarea { width: 100%; min-height: 220px; resize: vertical; padding: 14px; border: 1px solid var(--line); color: #e7edf2; background: var(--navy-deep); font: 13px/1.65 'IBM Plex Mono', monospace; }
 .config-warnings { max-height: 100px; overflow: auto; color: #a63726; font-size: 12px; }
 .apply-button { margin-top: 14px; padding: 9px 16px; border: 0; color: white; background: var(--orange); font-weight: 600; }
+.data-tools { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.data-tools h3 { margin: 0; font-size: 14px; }
+.data-tools p { max-width: 38ch; margin: 5px 0 0; }
+.data-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+.data-actions button { padding: 7px 10px; border: 1px solid var(--line); border-radius: 3px; background: transparent; font-size: 12px; }
+.data-actions button:hover { border-color: var(--navy); }
+.data-error { color: #a63726 !important; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .mobile-tabs { display: none; }
 
 @media (max-width: 1050px) {
@@ -154,25 +171,51 @@ kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #d
 }
 
 @media (max-width: 720px) {
-  .topbar { padding: 0 12px; }
+  .topbar { flex-basis: 46px; min-height: 46px; padding: 0 8px; }
   .sync-note, .quiet-button { display: none; }
+  .brand-version { display: none; }
+  .brand { gap: 7px; font-size: 15px; white-space: nowrap; }
+  .brand-mark { width: 26px; height: 26px; font-size: 15px; }
+  .mobile-config-button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: transparent; font-size: 14px; }
+  .mobile-config-button:hover { border-color: var(--navy); }
+  .topbar-actions { min-width: 0; gap: 4px; }
+  .view-controls { display: none; }
+  .view-button { width: 27px; height: 26px; justify-content: center; padding: 0; }
+  .topbar select { width: 86px; height: 30px; padding: 3px 6px; font-size: 12px; }
   .workspace, .workspace.nav-hidden { display: flex; flex-direction: column; }
-  .course-map { overflow-x: auto; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .navigation-shell { flex: 0 0 32px; display: flex; min-width: 0; border-bottom: 1px solid var(--line); background: #e9e5db; }
+  .course-map { flex: 1 1 auto; overflow-x: auto; padding: 0 6px; border: 0; }
   .course-map-heading, .progress-track { display: none; }
   .course-map nav { display: flex; width: max-content; }
-  .course-map nav button { width: 52px; display: block; padding: 8px; text-align: center; }
+  .course-map nav button { width: 40px; height: 32px; display: block; padding: 0 4px; text-align: center; }
   .course-map nav button > span:nth-child(2), .completion-dot { display: none; }
-  .chapter-index { font-size: 12px; }
+  .chapter-index { font-size: 11px; }
   .learning-area, .learning-area.lesson-hidden { flex: 1; min-height: 0; display: block; }
-  .mobile-tabs { display: grid; grid-template-columns: 1fr 1fr; height: 44px; background: var(--paper); }
-  .mobile-tabs button { border: 0; border-bottom: 2px solid transparent; background: transparent; }
-  .mobile-tabs button.active { border-bottom-color: var(--orange); }
-  .lesson-pane, .practice-pane { height: calc(100% - 44px); min-height: 0; }
-  .mobile-tabs.single { grid-template-columns: 1fr; }
+  .mobile-tabs { display: grid; flex: 0 0 auto; grid-template-columns: 34px 34px; height: 32px; border-left: 1px solid var(--line); background: var(--paper); }
+  .mobile-tabs button { display: grid; place-items: center; padding: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; }
+  .mobile-tabs button + button { border-left: 1px solid var(--line); }
+  .mobile-tabs button.active { border-bottom-color: var(--orange); background: var(--paper-bright); }
+  .mobile-tab-icon { display: block; width: 14px; height: 12px; color: var(--navy); }
+  .read-tab-icon { position: relative; border: 1px solid currentColor; border-radius: 1px; }
+  .read-tab-icon::after { position: absolute; inset: 0 auto 0 50%; border-left: 1px solid currentColor; content: ''; }
+  .practice-tab-icon { font: 600 11px/12px 'IBM Plex Mono', monospace; letter-spacing: -2px; }
+  .lesson-pane, .practice-pane { height: 100%; min-height: 0; }
+  .mobile-tabs.single { grid-template-columns: 34px; }
   .site-footer { flex-basis: 28px; justify-content: space-between; padding: 0 12px; }
   .footer-source { display: none; }
+  .buffer-state, .practice-actions > span:first-child { display: none; }
+  .pane-heading { min-height: 42px; padding: 0 12px; }
+  .practice-heading { padding: 0 12px; }
+  .reset-button { margin-left: 2px; }
+  .data-tools { align-items: stretch; flex-direction: column; gap: 12px; }
+  .data-actions button { flex: 1; }
   .mobile-hidden { display: none; }
   .lesson-copy { padding: 24px 20px 70px; }
+}
+
+@media (max-width: 360px) {
+  .brand { font-size: 14px; }
+  .topbar select { width: 72px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

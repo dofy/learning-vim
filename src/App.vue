@@ -1,37 +1,48 @@
 <script setup lang="ts">
 import MarkdownIt from 'markdown-it'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import VimEditor from './components/VimEditor.vue'
-import type { CourseManifest, Locale } from './types'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { createBackup, parseBackup } from './backup'
+import type { CourseManifest, EditorStatus, Locale } from './types'
 import { defaultPreferences, parseVimrc } from './vimrc'
+
+const VimEditor = defineAsyncComponent(() => import('./components/VimEditor.vue'))
 
 const labels = {
   en: {
     course: 'Course map', lesson: 'Lesson', practice: 'Practice buffer', reset: 'Reset buffer',
     complete: 'Mark complete', completed: 'Completed', config: 'Vim config', apply: 'Apply config',
-    configHelp: 'Supports syntax on/off, number, relativenumber, wrap, tabstop and map commands.',
+    configHelp: 'Supports lesson options including line numbers, search highlighting, indentation, tabs, filetype, syntax, and mappings.',
     source: 'Content synced from dofy/learn-vim', loading: 'Loading course…', update: 'A new version is ready.',
     reload: 'Reload', mobileLesson: 'Read', mobilePractice: 'Practice', error: 'Course could not be loaded.',
     showNav: 'Show course map', hideNav: 'Hide course map', showLesson: 'Show lesson', hideLesson: 'Hide lesson',
-    contentBy: 'Course content',
+    contentBy: 'Course content', previous: 'Previous lesson', next: 'Next lesson',
+    original: 'Course copy', modified: 'Saved locally', line: 'Line', learningData: 'Learning data',
+    dataHelp: 'Move progress and preferences between browsers without an account.',
+    exportData: 'Export data', importData: 'Import data', invalidBackup: 'This backup could not be imported.',
   },
   'zh-CN': {
     course: '课程航线', lesson: '课程正文', practice: '练习缓冲区', reset: '重置缓冲区',
     complete: '标记完成', completed: '已完成', config: 'Vim 配置', apply: '应用配置',
-    configHelp: '支持 syntax on/off、number、relativenumber、wrap、tabstop 和 map 系列命令。',
+    configHelp: '支持课程中的行号、搜索高亮、缩进、Tab、filetype、syntax 和 map 系列配置。',
     source: '课程同步自 dofy/learn-vim', loading: '正在装载课程…', update: '新版本已准备好。',
     reload: '重新载入', mobileLesson: '阅读', mobilePractice: '练习', error: '课程加载失败。',
     showNav: '显示导航', hideNav: '隐藏导航', showLesson: '显示正文', hideLesson: '隐藏正文',
-    contentBy: '课程内容',
+    contentBy: '课程内容', previous: '上一课', next: '下一课',
+    original: '课程原稿', modified: '已保存到本机', line: '行', learningData: '学习数据',
+    dataHelp: '无需账号，在不同浏览器之间迁移进度和偏好设置。',
+    exportData: '导出数据', importData: '导入数据', invalidBackup: '无法导入这份备份。',
   },
   ja: {
     course: 'コースマップ', lesson: 'レッスン', practice: '練習バッファ', reset: 'バッファを戻す',
     complete: '完了にする', completed: '完了', config: 'Vim 設定', apply: '設定を適用',
-    configHelp: 'syntax on/off、number、relativenumber、wrap、tabstop、map コマンドに対応します。',
+    configHelp: '行番号、検索ハイライト、インデント、Tab、filetype、syntax、map 設定に対応します。',
     source: 'dofy/learn-vim から同期', loading: 'コースを読み込み中…', update: '新しい版があります。',
     reload: '再読み込み', mobileLesson: '読む', mobilePractice: '練習', error: 'コースを読み込めません。',
     showNav: 'ナビを表示', hideNav: 'ナビを隠す', showLesson: '本文を表示', hideLesson: '本文を隠す',
-    contentBy: 'コース内容',
+    contentBy: 'コース内容', previous: '前のレッスン', next: '次のレッスン',
+    original: '教材の原文', modified: '端末に保存済み', line: '行', learningData: '学習データ',
+    dataHelp: 'アカウントなしで進捗と設定を別のブラウザへ移行できます。',
+    exportData: 'データを書き出す', importData: 'データを読み込む', invalidBackup: 'バックアップを読み込めません。',
   },
 } as const
 
@@ -68,10 +79,20 @@ const installUpdate = ref<() => void>(() => window.location.reload())
 const appVersion = __APP_VERSION__
 const navVisible = ref(localStorage.getItem('learning-vim:nav-visible') !== 'false')
 const lessonVisible = ref(localStorage.getItem('learning-vim:lesson-visible') !== 'false')
+const mobileMediaQuery = window.matchMedia('(max-width: 720px)')
+const mobileViewport = ref(mobileMediaQuery.matches)
+const editorStatus = ref<EditorStatus>({ cursorLine: 1, totalLines: 1, dirty: false })
+const importInput = ref<HTMLInputElement>()
+const backupError = ref('')
 
 const t = computed(() => labels[locale.value])
 const lessons = computed(() => manifest.value?.lessons ?? [])
 const currentLesson = computed(() => lessons.value.find((lesson) => lesson.id === lessonId.value))
+const showNav = computed(() => mobileViewport.value || navVisible.value)
+const showLesson = computed(() => mobileViewport.value || lessonVisible.value)
+const currentLessonIndex = computed(() => lessons.value.findIndex((lesson) => lesson.id === lessonId.value))
+const hasPreviousLesson = computed(() => currentLessonIndex.value > 0)
+const hasNextLesson = computed(() => currentLessonIndex.value >= 0 && currentLessonIndex.value < lessons.value.length - 1)
 const renderedLesson = computed(() => md.render(source.value))
 const progress = computed(() => {
   if (!lessons.value.length) return 0
@@ -102,7 +123,7 @@ async function loadLesson() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     source.value = await response.text()
     buffer.value = localStorage.getItem(storageKey('buffer')) ?? source.value
-    completed.value = JSON.parse(localStorage.getItem(`learning-vim:completed:${locale.value}`) || '{}')
+    completed.value = readCompleted()
     document.documentElement.lang = locale.value
   } catch (reason) {
     error.value = `${t.value.error} ${String(reason)}`
@@ -111,9 +132,26 @@ async function loadLesson() {
   }
 }
 
-function chooseLesson(id: string) {
+function chooseLesson(id: string, updateHistory = true) {
+  if (!lessons.value.some((lesson) => lesson.id === id)) return
   lessonId.value = id
-  mobilePane.value = 'lesson'
+  if (updateHistory && window.location.hash !== `#${id}`) {
+    window.history.pushState(null, '', `#${id}`)
+  }
+}
+
+function navigateLesson(offset: -1 | 1) {
+  const target = lessons.value[currentLessonIndex.value + offset]
+  if (target) chooseLesson(target.id)
+}
+
+function syncLessonFromLocation() {
+  const id = window.location.hash.slice(1)
+  if (/^chapter\d{2}$/.test(id)) chooseLesson(id, false)
+}
+
+function syncMobileViewport(event: MediaQueryListEvent) {
+  mobileViewport.value = event.matches
 }
 
 function handleLessonLink(event: MouseEvent) {
@@ -158,8 +196,46 @@ function toggleLesson() {
   if (!lessonVisible.value) mobilePane.value = 'practice'
 }
 
+function exportLearningData() {
+  const backup = createBackup(localStorage, appVersion)
+  const blob = new Blob([`${JSON.stringify(backup, null, 2)}\n`], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `learning-vim-backup-${new Date().toISOString().slice(0, 10)}.json`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+async function importLearningData(event: Event) {
+  backupError.value = ''
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  try {
+    const backup = parseBackup(await file.text())
+    for (const [key, value] of Object.entries(backup.data)) localStorage.setItem(key, value)
+    window.location.reload()
+  } catch {
+    backupError.value = t.value.invalidBackup
+    input.value = ''
+  }
+}
+
+function readCompleted(): Record<string, boolean> {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(`learning-vim:completed:${locale.value}`) || '{}')
+    return value && typeof value === 'object' ? value as Record<string, boolean> : {}
+  } catch {
+    return {}
+  }
+}
+
 watch(buffer, (value) => {
-  if (value && value !== source.value) localStorage.setItem(storageKey('buffer'), value)
+  if (loading.value) return
+  if (value === source.value) localStorage.removeItem(storageKey('buffer'))
+  else localStorage.setItem(storageKey('buffer'), value)
 })
 
 watch(locale, async (value) => {
@@ -168,6 +244,9 @@ watch(locale, async (value) => {
 })
 
 watch(lessonId, loadLesson)
+watch([currentLesson, locale], ([lesson]) => {
+  document.title = lesson ? `${lesson.titles[locale.value]} · Learning Vim` : 'Learning Vim'
+})
 
 onMounted(async () => {
   locale.value = initialLocale()
@@ -182,12 +261,21 @@ onMounted(async () => {
     const response = await fetch('/course/manifest.json')
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     manifest.value = await response.json()
+    syncLessonFromLocation()
+    if (!window.location.hash) window.history.replaceState(null, '', `#${lessonId.value}`)
     await nextTick()
     await loadLesson()
   } catch (reason) {
     error.value = `${t.value.error} ${String(reason)}`
     loading.value = false
   }
+  window.addEventListener('hashchange', syncLessonFromLocation)
+  mobileMediaQuery.addEventListener('change', syncMobileViewport)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('hashchange', syncLessonFromLocation)
+  mobileMediaQuery.removeEventListener('change', syncMobileViewport)
 })
 </script>
 
@@ -195,7 +283,7 @@ onMounted(async () => {
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="/" aria-label="Learning Vim home">
-        <span class="brand-mark">V</span>
+        <img class="brand-mark" src="/vim-mark.svg" alt="">
         <span>Learning Vim</span>
         <span class="brand-version">v{{ appVersion }}</span>
       </a>
@@ -231,6 +319,13 @@ onMounted(async () => {
         <button class="quiet-button" type="button" @click="vimConfigOpen = !vimConfigOpen">
           {{ t.config }}
         </button>
+        <button
+          class="mobile-config-button"
+          type="button"
+          :aria-label="t.config"
+          :title="t.config"
+          @click="vimConfigOpen = !vimConfigOpen"
+        >⚙</button>
       </div>
     </header>
 
@@ -238,45 +333,55 @@ onMounted(async () => {
       {{ t.update }} <button type="button" @click="reloadApp">{{ t.reload }}</button>
     </div>
 
-    <main class="workspace" :class="{ 'nav-hidden': !navVisible }">
-      <aside v-if="navVisible" class="course-map">
-        <div class="course-map-heading">
-          <h1>{{ t.course }}</h1>
-          <span>{{ progress }}%</span>
-        </div>
-        <div class="progress-track"><span :style="{ width: `${progress}%` }" /></div>
-        <nav aria-label="Course chapters">
-          <button
-            v-for="(lesson, index) in lessons"
-            :key="lesson.id"
-            type="button"
-            :class="{ active: lesson.id === lessonId, done: completed[lesson.id] }"
-            @click="chooseLesson(lesson.id)"
-          >
-            <span class="chapter-index">{{ String(index + 1).padStart(2, '0') }}</span>
-            <span>{{ lesson.titles[locale] }}</span>
-            <span class="completion-dot" aria-hidden="true" />
-          </button>
-        </nav>
-      </aside>
+    <main class="workspace" :class="{ 'nav-hidden': !showNav }">
+      <div class="navigation-shell">
+        <aside v-if="showNav" class="course-map">
+          <div class="course-map-heading">
+            <h1>{{ t.course }}</h1>
+            <span>{{ progress }}%</span>
+          </div>
+          <div class="progress-track"><span :style="{ width: `${progress}%` }" /></div>
+          <nav aria-label="Course chapters">
+            <button
+              v-for="(lesson, index) in lessons"
+              :key="lesson.id"
+              type="button"
+              :class="{ active: lesson.id === lessonId, done: completed[lesson.id] }"
+              @click="chooseLesson(lesson.id)"
+            >
+              <span class="chapter-index">{{ String(index + 1).padStart(2, '0') }}</span>
+              <span>{{ lesson.titles[locale] }}</span>
+              <span class="completion-dot" aria-hidden="true" />
+            </button>
+          </nav>
+        </aside>
 
-      <section class="learning-area" :class="{ 'lesson-hidden': !lessonVisible }">
-        <div class="mobile-tabs" :class="{ single: !lessonVisible }" role="tablist">
+        <div class="mobile-tabs" :class="{ single: !showLesson }" role="tablist">
           <button
-            v-if="lessonVisible"
+            v-if="showLesson"
             type="button"
             :class="{ active: mobilePane === 'lesson' }"
+            :aria-label="t.mobileLesson"
+            :title="t.mobileLesson"
             @click="mobilePane = 'lesson'"
           >
-            {{ t.mobileLesson }}
+            <span class="mobile-tab-icon read-tab-icon" aria-hidden="true" />
           </button>
-          <button type="button" :class="{ active: mobilePane === 'practice' }" @click="mobilePane = 'practice'">
-            {{ t.mobilePractice }}
+          <button
+            type="button"
+            :class="{ active: mobilePane === 'practice' }"
+            :aria-label="t.mobilePractice"
+            :title="t.mobilePractice"
+            @click="mobilePane = 'practice'"
+          >
+            <span class="mobile-tab-icon practice-tab-icon" aria-hidden="true">›_</span>
           </button>
         </div>
+      </div>
 
+      <section class="learning-area" :class="{ 'lesson-hidden': !showLesson }">
         <article
-          v-if="lessonVisible"
+          v-if="showLesson"
           class="lesson-pane"
           :class="{ 'mobile-hidden': mobilePane !== 'lesson' }"
         >
@@ -298,17 +403,42 @@ onMounted(async () => {
 
         <section class="practice-pane" :class="{ 'mobile-hidden': mobilePane !== 'practice' }">
           <div class="pane-heading practice-heading">
-            <span>{{ t.practice }}</span>
-            <div>
+            <div class="practice-title">
+              <span>{{ t.practice }}</span>
+              <span class="buffer-state" :class="{ modified: editorStatus.dirty }">
+                {{ editorStatus.dirty ? t.modified : t.original }}
+              </span>
+            </div>
+            <div class="practice-actions">
+              <span>{{ t.line }} {{ editorStatus.cursorLine }}/{{ editorStatus.totalLines }}</span>
               <kbd>Esc</kbd><span> Normal</span>
+              <button
+                class="lesson-step"
+                type="button"
+                :disabled="!hasPreviousLesson"
+                :aria-label="t.previous"
+                :title="t.previous"
+                @click="navigateLesson(-1)"
+              >←</button>
+              <button
+                class="lesson-step"
+                type="button"
+                :disabled="!hasNextLesson"
+                :aria-label="t.next"
+                :title="t.next"
+                @click="navigateLesson(1)"
+              >→</button>
               <button class="reset-button" type="button" @click="resetBuffer">{{ t.reset }}</button>
             </div>
           </div>
           <VimEditor
             v-if="!loading && !error"
             v-model="buffer"
+            :source-value="source"
             :preferences="preferences"
             :mappings="mappings"
+            @preferences-change="preferences = $event"
+            @status="editorStatus = $event"
           />
         </section>
       </section>
@@ -335,6 +465,24 @@ onMounted(async () => {
           <li v-for="warning in configWarnings" :key="warning">{{ warning }}</li>
         </ul>
         <button class="apply-button" type="button" @click="applyConfig">{{ t.apply }}</button>
+        <div class="data-tools">
+          <div>
+            <h3>{{ t.learningData }}</h3>
+            <p>{{ t.dataHelp }}</p>
+          </div>
+          <div class="data-actions">
+            <button type="button" @click="exportLearningData">{{ t.exportData }}</button>
+            <button type="button" @click="importInput?.click()">{{ t.importData }}</button>
+            <input
+              ref="importInput"
+              class="visually-hidden"
+              type="file"
+              accept="application/json,.json"
+              @change="importLearningData"
+            >
+          </div>
+        </div>
+        <p v-if="backupError" class="data-error" role="alert">{{ backupError }}</p>
       </section>
     </div>
   </div>

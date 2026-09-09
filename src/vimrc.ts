@@ -4,7 +4,14 @@ export const defaultPreferences: VimPreferences = {
   lineNumbers: true,
   relativeLineNumbers: false,
   lineWrapping: false,
+  highlightSearch: true,
+  autoIndent: true,
+  smartIndent: true,
   tabSize: 4,
+  softTabSize: 4,
+  shiftWidth: 4,
+  expandTab: false,
+  filetypeDetection: true,
   syntaxHighlighting: true,
 }
 
@@ -52,10 +59,25 @@ export function parseVimrc(source: string): {
         else if (option === 'norelativenumber') preferences.relativeLineNumbers = false
         else if (option === 'wrap') preferences.lineWrapping = true
         else if (option === 'nowrap') preferences.lineWrapping = false
-        else if (/^tabstop=\d+$/.test(option)) {
-          preferences.tabSize = Number(option.split('=')[1])
-        }
+        else if (option === 'hlsearch') preferences.highlightSearch = true
+        else if (option === 'nohlsearch') preferences.highlightSearch = false
+        else if (option === 'autoindent') preferences.autoIndent = true
+        else if (option === 'noautoindent') preferences.autoIndent = false
+        else if (option === 'smartindent') preferences.smartIndent = true
+        else if (option === 'nosmartindent') preferences.smartIndent = false
+        else if (option === 'expandtab') preferences.expandTab = true
+        else if (option === 'noexpandtab') preferences.expandTab = false
+        else if (/^tabstop=[1-9]\d*$/.test(option)) preferences.tabSize = Number(option.split('=')[1])
+        else if (/^softtabstop=[1-9]\d*$/.test(option)) preferences.softTabSize = Number(option.split('=')[1])
+        else if (/^shiftwidth=[1-9]\d*$/.test(option)) preferences.shiftWidth = Number(option.split('=')[1])
+        else warnings.push(`Line ${index + 1}: unsupported option ${option}`)
       }
+      continue
+    }
+
+    const filetypeMatch = line.match(/^filetype\s+(on|off)$/)
+    if (filetypeMatch?.[1]) {
+      preferences.filetypeDetection = filetypeMatch[1] === 'on'
       continue
     }
 
@@ -84,9 +106,7 @@ export function parseVimrc(source: string): {
       continue
     }
 
-    if (!/^filetype\b/.test(line)) {
-      warnings.push(`Line ${index + 1}: ignored in the web MVP`)
-    }
+    warnings.push(`Line ${index + 1}: ignored in the web editor`)
   }
 
   return { preferences, mappings, warnings }
