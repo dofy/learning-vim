@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { basicSetup } from 'codemirror'
+import { markdown } from '@codemirror/lang-markdown'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { EditorState } from '@codemirror/state'
 import { EditorView, lineNumbers } from '@codemirror/view'
 import { Vim, vim } from '@replit/codemirror-vim'
+import { tags } from '@lezer/highlight'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { VimMapping, VimPreferences } from '../types'
 
@@ -20,6 +23,16 @@ const host = ref<HTMLElement>()
 let editor: EditorView | undefined
 let appliedMappings: VimMapping[] = []
 
+const learningVimHighlightStyle = HighlightStyle.define([
+  { tag: tags.heading, color: '#ff916b', fontWeight: '700' },
+  { tag: tags.strong, color: '#f3c776', fontWeight: '700' },
+  { tag: tags.emphasis, color: '#b6d9d5', fontStyle: 'italic' },
+  { tag: [tags.link, tags.url], color: '#79c7c1', textDecoration: 'underline' },
+  { tag: tags.monospace, color: '#f0a985' },
+  { tag: tags.quote, color: '#9db3c2', fontStyle: 'italic' },
+  { tag: tags.contentSeparator, color: '#6e8799' },
+])
+
 function clearMappings() {
   for (const mapping of appliedMappings) {
     try {
@@ -36,6 +49,8 @@ function applyMappings() {
   for (const mapping of props.mappings) {
     if (mapping.unmap) {
       Vim.unmap(mapping.lhs, mapping.mode)
+    } else if (mapping.noremap) {
+      Vim.noremap(mapping.lhs, mapping.rhs, mapping.mode)
     } else Vim.map(mapping.lhs, mapping.rhs, mapping.mode)
   }
   appliedMappings = props.mappings.filter((mapping) => !mapping.unmap)
@@ -67,6 +82,9 @@ function createEditor() {
     )
   }
   if (props.preferences.lineWrapping) extensions.push(EditorView.lineWrapping)
+  if (props.preferences.syntaxHighlighting) {
+    extensions.push(markdown(), syntaxHighlighting(learningVimHighlightStyle))
+  }
 
   editor = new EditorView({
     parent: host.value,

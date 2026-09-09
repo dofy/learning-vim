@@ -5,6 +5,7 @@ export const defaultPreferences: VimPreferences = {
   relativeLineNumbers: false,
   lineWrapping: false,
   tabSize: 4,
+  syntaxHighlighting: true,
 }
 
 const mappingModes: Record<string, VimMapping['mode']> = {
@@ -58,6 +59,12 @@ export function parseVimrc(source: string): {
       continue
     }
 
+    const syntaxMatch = line.match(/^syntax\s+(on|enable|off)$/)
+    if (syntaxMatch?.[1]) {
+      preferences.syntaxHighlighting = syntaxMatch[1] !== 'off'
+      continue
+    }
+
     const mappingMatch = line.match(/^(\w*map|\w*unmap)\s+(\S+)(?:\s+(.+))?$/)
     if (mappingMatch?.[1] && mappingMatch[2]) {
       const command = mappingMatch[1]
@@ -72,11 +79,12 @@ export function parseVimrc(source: string): {
         rhs: replaceLeader(mappingMatch[3] || ''),
         mode: mappingModes[command],
         unmap: command.endsWith('unmap'),
+        noremap: command.includes('noremap'),
       })
       continue
     }
 
-    if (!/^(filetype|syntax)\b/.test(line)) {
+    if (!/^filetype\b/.test(line)) {
       warnings.push(`Line ${index + 1}: ignored in the web MVP`)
     }
   }

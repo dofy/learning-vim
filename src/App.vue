@@ -9,7 +9,7 @@ const labels = {
   en: {
     course: 'Course map', lesson: 'Lesson', practice: 'Practice buffer', reset: 'Reset buffer',
     complete: 'Mark complete', completed: 'Completed', config: 'Vim config', apply: 'Apply config',
-    configHelp: 'MVP support: set number, relativenumber, wrap, tabstop and map commands.',
+    configHelp: 'Supports syntax on/off, number, relativenumber, wrap, tabstop and map commands.',
     source: 'Content synced from dofy/learn-vim', loading: 'Loading course…', update: 'A new version is ready.',
     reload: 'Reload', mobileLesson: 'Read', mobilePractice: 'Practice', error: 'Course could not be loaded.',
     showNav: 'Show course map', hideNav: 'Hide course map', showLesson: 'Show lesson', hideLesson: 'Hide lesson',
@@ -18,7 +18,7 @@ const labels = {
   'zh-CN': {
     course: '课程航线', lesson: '课程正文', practice: '练习缓冲区', reset: '重置缓冲区',
     complete: '标记完成', completed: '已完成', config: 'Vim 配置', apply: '应用配置',
-    configHelp: 'MVP 支持 set number、relativenumber、wrap、tabstop 和 map 系列命令。',
+    configHelp: '支持 syntax on/off、number、relativenumber、wrap、tabstop 和 map 系列命令。',
     source: '课程同步自 dofy/learn-vim', loading: '正在装载课程…', update: '新版本已准备好。',
     reload: '重新载入', mobileLesson: '阅读', mobilePractice: '练习', error: '课程加载失败。',
     showNav: '显示导航', hideNav: '隐藏导航', showLesson: '显示正文', hideLesson: '隐藏正文',
@@ -27,7 +27,7 @@ const labels = {
   ja: {
     course: 'コースマップ', lesson: 'レッスン', practice: '練習バッファ', reset: 'バッファを戻す',
     complete: '完了にする', completed: '完了', config: 'Vim 設定', apply: '設定を適用',
-    configHelp: 'MVP は number、relativenumber、wrap、tabstop、map コマンドに対応します。',
+    configHelp: 'syntax on/off、number、relativenumber、wrap、tabstop、map コマンドに対応します。',
     source: 'dofy/learn-vim から同期', loading: 'コースを読み込み中…', update: '新しい版があります。',
     reload: '再読み込み', mobileLesson: '読む', mobilePractice: '練習', error: 'コースを読み込めません。',
     showNav: 'ナビを表示', hideNav: 'ナビを隠す', showLesson: '本文を表示', hideLesson: '本文を隠す',
@@ -57,7 +57,7 @@ const buffer = ref('')
 const loading = ref(true)
 const error = ref('')
 const completed = ref<Record<string, boolean>>({})
-const vimrc = ref('set number\nset tabstop=4\n" Try: inoremap jj <Esc>')
+const vimrc = ref('syntax on\nset number\nset tabstop=4\n" Try: inoremap jj <Esc>')
 const vimConfigOpen = ref(false)
 const configWarnings = ref<string[]>([])
 const mobilePane = ref<'lesson' | 'practice'>('lesson')
@@ -315,10 +315,10 @@ onMounted(async () => {
     </main>
 
     <footer class="site-footer">
-      <span>⌨️ © 2026 Seven Yu</span>
-      <a href="https://learning-vim.phpz.org/">🌐 learning-vim.phpz.org</a>
+      <span>© 2026 Seven Yu · Made with ❤️</span>
+      <a href="https://learning-vim.phpz.org/">learning-vim.phpz.org</a>
       <span class="footer-source">
-        📚 {{ t.contentBy }}
+        {{ t.contentBy }}
         <a href="https://github.com/dofy/learn-vim" target="_blank" rel="noreferrer">dofy/learn-vim</a>
       </span>
     </footer>

@@ -19,6 +19,7 @@ export interface VimPreferences {
   relativeLineNumbers: boolean
   lineWrapping: boolean
   tabSize: number
+  syntaxHighlighting: boolean
 }
 
 export interface VimMapping {
@@ -26,4 +27,5 @@ export interface VimMapping {
   rhs: string
   mode: 'normal' | 'insert' | 'visual'
   unmap?: boolean
+  noremap?: boolean
 }

@@ -87,6 +87,7 @@ The current editor uses CodeMirror 6 with `@replit/codemirror-vim`. It covers
 the everyday Vim motions and editing workflow needed for the first usable
 release. The `.vimrc` parser intentionally supports a safe subset:
 
+- `syntax on` / `syntax off` for Markdown highlighting
 - `set number`, `relativenumber`, `wrap`, and `tabstop`
 - `map`, `noremap`, `nmap`, `nnoremap`, `imap`, `inoremap`, `vmap`, and their
   matching `unmap` commands
