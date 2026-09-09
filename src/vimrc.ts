@@ -41,14 +41,19 @@ export function parseVimrc(source: string): {
   let leader = '\\'
 
   for (const [index, rawLine] of source.split('\n').entries()) {
-    const line = rawLine.trim()
-    if (!line || line.startsWith('"')) continue
+    const trimmedLine = rawLine.trim()
+    if (!trimmedLine || trimmedLine.startsWith('"')) continue
 
-    const leaderMatch = line.match(/^let\s+mapleader\s*=\s*["'](.+)["']$/)
-    if (leaderMatch?.[1]) {
-      leader = leaderMatch[1]
+    const leaderMatch = trimmedLine.match(/^let\s+mapleader\s*=\s*(["'])(.*?)\1(?:\s+".*)?$/)
+    if (leaderMatch?.[2]) {
+      leader = leaderMatch[2]
       continue
     }
+
+    // In Vimscript a double quote following whitespace starts an inline
+    // comment. Course snippets use this form to explain each setting.
+    const line = trimmedLine.replace(/\s+".*$/, '').trim()
+    if (!line) continue
 
     const setMatch = line.match(/^set\s+(.+)$/)
     if (setMatch?.[1]) {

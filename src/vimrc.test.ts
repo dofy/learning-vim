@@ -51,6 +51,42 @@ syntax on`)
     expect(result.warnings).toEqual([])
   })
 
+  it('ignores the inline comments used by the lesson four vimrc example', () => {
+    const result = parseVimrc(`set number " 显示行号
+set relativenumber " 显示相对行号（这个非常重要，慢慢体会）
+set hlsearch " 搜索结果高亮
+set autoindent " 自动缩进
+set smartindent " 智能缩进
+set tabstop=4 " 设置 tab 制表符所占宽度为 4
+set softtabstop=4 " 设置按 tab 时缩进的宽度为 4
+set shiftwidth=4 " 设置自动缩进宽度为 4
+set expandtab " 缩进时将 tab 制表符转换为空格
+filetype on " 开启文件类型检测
+syntax on " 开启语法高亮`)
+
+    expect(result.preferences).toMatchObject({
+      lineNumbers: true,
+      relativeLineNumbers: true,
+      highlightSearch: true,
+      autoIndent: true,
+      smartIndent: true,
+      tabSize: 4,
+      softTabSize: 4,
+      shiftWidth: 4,
+      expandTab: true,
+      filetypeDetection: true,
+      syntaxHighlighting: true,
+    })
+    expect(result.warnings).toEqual([])
+  })
+
+  it('keeps a quoted mapleader value before an inline comment', () => {
+    expect(parseVimrc('let mapleader = "," " use comma as leader\nnnoremap <leader>w :w<CR>').mappings[0]).toMatchObject({
+      lhs: ',w',
+      rhs: ':w<CR>',
+    })
+  })
+
   it('parses negative boolean options and warns about unknown settings', () => {
     const result = parseVimrc('set nonumber norelativenumber nohlsearch noautoindent nosmartindent noexpandtab softtabstop=0 mystery')
 
