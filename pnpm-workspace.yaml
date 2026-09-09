@@ -1,0 +1,3 @@
+allowBuilds:
+  # Optional dependency of the PWA tooling; icon generation is not used here.
+  sharp: false
