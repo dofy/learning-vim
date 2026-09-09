@@ -3,11 +3,12 @@ import { defaultKeymap, history, historyKeymap, indentLess } from '@codemirror/c
 import { markdown } from '@codemirror/lang-markdown'
 import { HighlightStyle, indentUnit, syntaxHighlighting } from '@codemirror/language'
 import { Compartment, EditorSelection, EditorState, type EditorState as CodeMirrorState, type Extension } from '@codemirror/state'
-import { drawSelection, EditorView, highlightSpecialChars, keymap, lineNumbers } from '@codemirror/view'
+import { drawSelection, EditorView, gutter, GutterMarker, highlightSpecialChars, keymap } from '@codemirror/view'
 import { Vim, vim, getCM } from '@replit/codemirror-vim'
 import { tags } from '@lezer/highlight'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { shouldLoadMarkdownLanguage, shouldReconfigureLanguage } from '../editorLanguage'
+import { formatVimLineNumber, shouldShowLineNumbers } from '../lineNumbers'
 import type { EditorStatus, VimMapping, VimPreferences } from '../types'
 import { attachVimOptionController, registerVimOptionBridge, type VimOptionController } from '../vimBridge'
 
@@ -50,6 +51,20 @@ const learningVimHighlightStyle = HighlightStyle.define([
   { tag: tags.contentSeparator, color: '#6e8799' },
 ])
 
+class VimLineNumberMarker extends GutterMarker {
+  constructor(readonly label: string) {
+    super()
+  }
+
+  eq(other: VimLineNumberMarker) {
+    return this.label === other.label
+  }
+
+  toDOM() {
+    return document.createTextNode(this.label)
+  }
+}
+
 function reportStatus(state: CodeMirrorState) {
   emit('status', {
     cursorLine: state.doc.lineAt(state.selection.main.head).number,
@@ -59,13 +74,20 @@ function reportStatus(state: CodeMirrorState) {
 }
 
 function lineNumberExtension(preferences: VimPreferences): Extension {
-  if (!preferences.lineNumbers) return []
-  return lineNumbers({
-    formatNumber(lineNumber, state) {
-      if (!runtimePreferences.relativeLineNumbers) return String(lineNumber)
-      const cursorLine = state.doc.lineAt(state.selection.main.head).number
-      return String(lineNumber === cursorLine ? lineNumber : Math.abs(lineNumber - cursorLine))
+  if (!shouldShowLineNumbers(preferences)) return []
+  const spacer = (view: EditorView) => new VimLineNumberMarker('9'.repeat(String(view.state.doc.lines).length))
+  return gutter({
+    class: 'cm-lineNumbers',
+    initialSpacer: spacer,
+    updateSpacer(_marker, update) {
+      return spacer(update.view)
     },
+    lineMarker(view, line) {
+      const lineNumber = view.state.doc.lineAt(line.from).number
+      const cursorLine = view.state.doc.lineAt(view.state.selection.main.head).number
+      return new VimLineNumberMarker(formatVimLineNumber(lineNumber, cursorLine, preferences))
+    },
+    lineMarkerChange: (update) => update.selectionSet || update.docChanged,
   })
 }
 
