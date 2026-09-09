@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import MarkdownIt from 'markdown-it'
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createBackup, parseBackup } from './backup'
+import VimEditor from './components/VimEditor.vue'
 import type { CourseManifest, EditorStatus, Locale } from './types'
 import { defaultPreferences, parseVimrc } from './vimrc'
-
-const VimEditor = defineAsyncComponent(() => import('./components/VimEditor.vue'))
 
 const labels = {
   en: {
