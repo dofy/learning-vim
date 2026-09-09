@@ -1,3 +1,8 @@
 allowBuilds:
+  esbuild: true
   # Optional dependency of the PWA tooling; icon generation is not used here.
   sharp: false
+  workerd: true
+minimumReleaseAgeExclude:
+  - miniflare@5.20260908.0-alpha
+  - wrangler@4.130.0
