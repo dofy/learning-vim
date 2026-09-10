@@ -126,12 +126,11 @@ select {
 .buffer-state { padding-left: 8px; border-left: 1px solid #31516b; color: #86a2b5; }
 .buffer-state.modified { color: #83c5bd; }
 .practice-actions { white-space: nowrap; }
-kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #dce6ed; font: 500 10px 'IBM Plex Mono', monospace; }
 .complete-button, .reset-button { border: 0; background: transparent; font-size: 12px; }
 .complete-button { color: var(--orange); }
 .complete-button.completed { color: #518c86; }
 .reset-button { margin-left: 10px; color: #dce6ed; text-decoration: underline; text-underline-offset: 3px; }
-.lesson-step { width: 26px; height: 24px; border: 1px solid #45647c; border-radius: 3px; color: #dce6ed; background: transparent; line-height: 1; }
+.lesson-step { height: 24px; padding: 0 8px; border: 1px solid #45647c; border-radius: 3px; color: #dce6ed; background: transparent; font-size: 11px; line-height: 1; }
 .lesson-step:hover:not(:disabled) { border-color: #8fb9b5; background: rgba(115, 166, 162, 0.12); }
 .lesson-step:disabled { cursor: not-allowed; opacity: 0.35; }
 .lesson-copy { max-width: 760px; padding: 28px clamp(24px, 4vw, 54px) 80px; color: #233b4f; font-size: 15px; line-height: 1.8; }

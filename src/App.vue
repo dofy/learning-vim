@@ -14,8 +14,8 @@ const labels = {
     source: 'Content synced from dofy/learn-vim', loading: 'Loading course…', update: 'A new version is ready.',
     reload: 'Reload', readMode: 'Read', editMode: 'Edit', error: 'Course could not be loaded.',
     showNav: 'Show course map', hideNav: 'Hide course map', showLesson: 'Show lesson', hideLesson: 'Hide lesson',
-    contentBy: 'Course content', previous: 'Previous lesson', next: 'Next lesson',
-    original: 'Course copy', modified: 'Saved locally', line: 'Line', learningData: 'Learning data',
+    contentBy: 'Course content', previous: 'Previous chapter', next: 'Next chapter',
+    original: 'Course copy', modified: 'Saved locally', learningData: 'Learning data',
     dataHelp: 'Move progress and preferences between browsers without an account.',
     exportData: 'Export data', importData: 'Import data', invalidBackup: 'This backup could not be imported.',
   },
@@ -26,8 +26,8 @@ const labels = {
     source: '课程同步自 dofy/learn-vim', loading: '正在装载课程…', update: '新版本已准备好。',
     reload: '重新载入', readMode: '阅读', editMode: '编辑', error: '课程加载失败。',
     showNav: '显示导航', hideNav: '隐藏导航', showLesson: '显示正文', hideLesson: '隐藏正文',
-    contentBy: '课程内容', previous: '上一课', next: '下一课',
-    original: '课程原稿', modified: '已保存到本机', line: '行', learningData: '学习数据',
+    contentBy: '课程内容', previous: '上一章', next: '下一章',
+    original: '课程原稿', modified: '已保存到本机', learningData: '学习数据',
     dataHelp: '无需账号，在不同浏览器之间迁移进度和偏好设置。',
     exportData: '导出数据', importData: '导入数据', invalidBackup: '无法导入这份备份。',
   },
@@ -38,8 +38,8 @@ const labels = {
     source: 'dofy/learn-vim から同期', loading: 'コースを読み込み中…', update: '新しい版があります。',
     reload: '再読み込み', readMode: '読む', editMode: '編集', error: 'コースを読み込めません。',
     showNav: 'ナビを表示', hideNav: 'ナビを隠す', showLesson: '本文を表示', hideLesson: '本文を隠す',
-    contentBy: 'コース内容', previous: '前のレッスン', next: '次のレッスン',
-    original: '教材の原文', modified: '端末に保存済み', line: '行', learningData: '学習データ',
+    contentBy: 'コース内容', previous: '前の章', next: '次の章',
+    original: '教材の原文', modified: '端末に保存済み', learningData: '学習データ',
     dataHelp: 'アカウントなしで進捗と設定を別のブラウザへ移行できます。',
     exportData: 'データを書き出す', importData: 'データを読み込む', invalidBackup: 'バックアップを読み込めません。',
   },
@@ -100,6 +100,12 @@ const progress = computed(() => {
   if (!lessons.value.length) return 0
   const count = lessons.value.filter((lesson) => completed.value[lesson.id]).length
   return Math.round((count / lessons.value.length) * 100)
+})
+const editorPosition = computed(() => {
+  const { cursorLine, totalLines } = editorStatus.value
+  if (locale.value === 'zh-CN') return `第 ${cursorLine} 行 / 共 ${totalLines} 行`
+  if (locale.value === 'ja') return `${cursorLine} / ${totalLines} 行目`
+  return `Line ${cursorLine} of ${totalLines}`
 })
 
 function storageKey(kind: string) {
@@ -480,8 +486,7 @@ onBeforeUnmount(() => {
               </span>
             </div>
             <div class="practice-actions">
-              <span>{{ t.line }} {{ editorStatus.cursorLine }}/{{ editorStatus.totalLines }}</span>
-              <kbd>Esc</kbd><span> Normal</span>
+              <span>{{ editorPosition }}</span>
               <button
                 class="lesson-step"
                 type="button"
@@ -489,7 +494,7 @@ onBeforeUnmount(() => {
                 :aria-label="t.previous"
                 :title="t.previous"
                 @click="navigateLesson(-1)"
-              >←</button>
+              >{{ t.previous }}</button>
               <button
                 class="lesson-step"
                 type="button"
@@ -497,7 +502,7 @@ onBeforeUnmount(() => {
                 :aria-label="t.next"
                 :title="t.next"
                 @click="navigateLesson(1)"
-              >→</button>
+              >{{ t.next }}</button>
               <button class="reset-button" type="button" @click="resetBuffer">{{ t.reset }}</button>
             </div>
           </div>
@@ -507,6 +512,7 @@ onBeforeUnmount(() => {
             :source-value="source"
             :preferences="preferences"
             :mappings="mappings"
+            @open-lesson="chooseLesson"
             @preferences-change="preferences = $event"
             @status="editorStatus = $event"
           />

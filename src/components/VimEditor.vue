@@ -22,6 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   'preferences-change': [value: VimPreferences]
+  'open-lesson': [lessonId: string]
   status: [value: EditorStatus]
 }>()
 
@@ -219,7 +220,11 @@ function createEditor() {
   })
 
   const cm = getCM(editor)
-  editorController = { preferences: runtimePreferences, update: updateRuntimePreferences }
+  editorController = {
+    preferences: runtimePreferences,
+    update: updateRuntimePreferences,
+    openLesson: (lessonId) => emit('open-lesson', lessonId),
+  }
   viewControllers.set(editor, editorController)
   if (cm) attachVimOptionController(cm, editorController)
   editor.dom.classList.toggle('vim-no-hlsearch', !runtimePreferences.highlightSearch)

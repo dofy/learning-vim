@@ -1,10 +1,12 @@
 import { CodeMirror, Vim, type CodeMirrorV } from '@replit/codemirror-vim'
+import { courseLessonAtCursor } from './courseFile'
 import type { VimPreferences } from './types'
 import { defaultPreferences } from './vimrc'
 
 export interface VimOptionController {
   preferences: VimPreferences
   update: (patch: Partial<VimPreferences>) => void
+  openLesson?: (lessonId: string) => void
 }
 
 const controllers = new WeakMap<object, VimOptionController>()
@@ -60,6 +62,13 @@ export function registerVimOptionBridge() {
   defineNumberOption('tabstop', 'tabSize', ['ts'])
   defineNumberOption('softtabstop', 'softTabSize', ['sts'], 0)
   defineNumberOption('shiftwidth', 'shiftWidth', ['sw'])
+
+  Vim.defineAction('openCourseFile', (cm) => {
+    const cursor = cm.getCursor()
+    const lessonId = courseLessonAtCursor(cm.getLine(cursor.line), cursor.ch)
+    if (lessonId) controllerFor(cm)?.openLesson?.(lessonId)
+  })
+  Vim.mapCommand('gf', 'action', 'openCourseFile', {}, {})
 
   Vim.defineEx('syntax', 'sy', (cm, params) => {
     updateExBoolean(cm, params.argString.trim(), 'syntaxHighlighting')
