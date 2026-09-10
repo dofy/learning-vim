@@ -193,7 +193,11 @@ select {
 .config-panel p { color: var(--muted); font-size: 13px; }
 .config-panel textarea { width: 100%; min-height: 220px; resize: vertical; padding: 14px; border: 1px solid var(--line); color: #e7edf2; background: var(--navy-deep); font: 13px/1.65 'IBM Plex Mono', monospace; }
 .config-warnings { max-height: 100px; overflow: auto; color: #a63726; font-size: 12px; }
-.apply-button { margin-top: 14px; padding: 9px 16px; border: 0; color: white; background: var(--orange); font-weight: 600; }
+.config-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.apply-button { padding: 9px 16px; border: 0; color: white; background: var(--orange); font-size: 13px; font-weight: 600; }
+.reset-config-button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--navy); background: transparent; font-size: 13px; font-weight: 600; }
+.reset-config-button:hover { border-color: var(--navy); }
+.config-panel .reset-config-help { margin: 7px 0 0; font-size: 11px; }
 .data-tools { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
 .data-tools h3 { margin: 0; font-size: 14px; }
 .data-tools p { max-width: 38ch; margin: 5px 0 0; }

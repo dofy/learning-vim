@@ -11,8 +11,9 @@ import { defaultPreferences, parseVimrc } from './vimrc'
 const labels = {
   en: {
     course: 'Course map', lesson: 'Lesson', practice: 'Practice buffer', reset: 'Reset buffer',
-    complete: 'Mark complete', completed: 'Completed', config: 'Vim config', apply: 'Apply config',
+    complete: 'Mark complete', completed: 'Completed', config: 'Vim config', apply: 'Apply config', resetConfig: 'Restore defaults',
     configHelp: 'Supports lesson options including line numbers, search highlighting, indentation, tabs, filetype, syntax, and mappings.',
+    resetConfigHelp: 'Restores only Vim config. Progress and practice buffers are not changed.',
     source: 'Content synced from dofy/learn-vim', loading: 'Loading course…', update: 'A new version is ready.',
     reload: 'Reload', readMode: 'Read', editMode: 'Edit', error: 'Course could not be loaded.',
     showNav: 'Show course map', hideNav: 'Hide course map', showLesson: 'Show lesson', hideLesson: 'Hide lesson',
@@ -20,14 +21,15 @@ const labels = {
     original: 'Course copy', modified: 'Saved locally', learningData: 'Learning data',
     dataHelp: 'Move progress and preferences between browsers without an account.',
     exportData: 'Export data', importData: 'Import data', invalidBackup: 'This backup could not be imported.',
-    applyFileConfig: 'Apply this config', configApplied: 'Vim config applied', clipboardCopied: 'Copied to system clipboard',
+    applyFileConfig: 'Apply this config', configApplied: 'Vim config applied', configReset: 'Default Vim config restored', clipboardCopied: 'Copied to system clipboard',
     clipboardBlocked: 'System clipboard permission was denied', closePreview: 'Close file preview',
     readOnlyPreview: 'Read-only file preview', sourceOnlyVimrc: 'This course can only source vimrc.vim or ~/.vimrc.',
   },
   'zh-CN': {
     course: '课程航线', lesson: '课程正文', practice: '练习缓冲区', reset: '重置缓冲区',
-    complete: '标记完成', completed: '已完成', config: 'Vim 配置', apply: '应用配置',
+    complete: '标记完成', completed: '已完成', config: 'Vim 配置', apply: '应用配置', resetConfig: '恢复初始设置',
     configHelp: '支持课程中的行号、搜索高亮、缩进、Tab、filetype、syntax 和 map 系列配置。',
+    resetConfigHelp: '只恢复 Vim 配置，不影响学习进度和练习内容。',
     source: '课程同步自 dofy/learn-vim', loading: '正在装载课程…', update: '新版本已准备好。',
     reload: '重新载入', readMode: '阅读', editMode: '编辑', error: '课程加载失败。',
     showNav: '显示导航', hideNav: '隐藏导航', showLesson: '显示正文', hideLesson: '隐藏正文',
@@ -35,14 +37,15 @@ const labels = {
     original: '课程原稿', modified: '已保存到本机', learningData: '学习数据',
     dataHelp: '无需账号，在不同浏览器之间迁移进度和偏好设置。',
     exportData: '导出数据', importData: '导入数据', invalidBackup: '无法导入这份备份。',
-    applyFileConfig: '应用此配置', configApplied: 'Vim 配置已应用', clipboardCopied: '已复制到系统剪贴板',
+    applyFileConfig: '应用此配置', configApplied: 'Vim 配置已应用', configReset: '已恢复初始 Vim 配置', clipboardCopied: '已复制到系统剪贴板',
     clipboardBlocked: '浏览器未允许写入系统剪贴板', closePreview: '关闭文件预览',
     readOnlyPreview: '文件只读预览', sourceOnlyVimrc: '本课程仅支持 source vimrc.vim 或 ~/.vimrc。',
   },
   ja: {
     course: 'コースマップ', lesson: 'レッスン', practice: '練習バッファ', reset: 'バッファを戻す',
-    complete: '完了にする', completed: '完了', config: 'Vim 設定', apply: '設定を適用',
+    complete: '完了にする', completed: '完了', config: 'Vim 設定', apply: '設定を適用', resetConfig: '初期設定に戻す',
     configHelp: '行番号、検索ハイライト、インデント、Tab、filetype、syntax、map 設定に対応します。',
+    resetConfigHelp: 'Vim 設定だけを初期化します。進捗と練習内容は変更されません。',
     source: 'dofy/learn-vim から同期', loading: 'コースを読み込み中…', update: '新しい版があります。',
     reload: '再読み込み', readMode: '読む', editMode: '編集', error: 'コースを読み込めません。',
     showNav: 'ナビを表示', hideNav: 'ナビを隠す', showLesson: '本文を表示', hideLesson: '本文を隠す',
@@ -50,7 +53,7 @@ const labels = {
     original: '教材の原文', modified: '端末に保存済み', learningData: '学習データ',
     dataHelp: 'アカウントなしで進捗と設定を別のブラウザへ移行できます。',
     exportData: 'データを書き出す', importData: 'データを読み込む', invalidBackup: 'バックアップを読み込めません。',
-    applyFileConfig: 'この設定を適用', configApplied: 'Vim 設定を適用しました', clipboardCopied: 'システムのクリップボードにコピーしました',
+    applyFileConfig: 'この設定を適用', configApplied: 'Vim 設定を適用しました', configReset: 'Vim の初期設定に戻しました', clipboardCopied: 'システムのクリップボードにコピーしました',
     clipboardBlocked: 'システムのクリップボードへの書き込みが許可されていません', closePreview: 'ファイル表示を閉じる',
     readOnlyPreview: 'ファイルの読み取り専用表示', sourceOnlyVimrc: 'このコースでは vimrc.vim または ~/.vimrc のみ source できます。',
   },
@@ -90,7 +93,8 @@ const activeFileName = ref('chapter01.md')
 const loading = ref(true)
 const error = ref('')
 const completed = ref<Record<string, boolean>>({})
-const vimrc = ref('syntax on\nset number\nset tabstop=4\n" Try: inoremap jj <Esc>')
+const initialVimrc = 'syntax on\nset number\nset tabstop=4\n" Try: inoremap jj <Esc>'
+const vimrc = ref(initialVimrc)
 const vimConfigOpen = ref(false)
 const configWarnings = ref<string[]>([])
 const workspaceMode = ref<'read' | 'edit'>('read')
@@ -338,16 +342,22 @@ function toggleComplete() {
   localStorage.setItem(`learning-vim:completed:${locale.value}`, JSON.stringify(completed.value))
 }
 
-function applyConfig(showConfirmation = false) {
+function applyConfig(showConfirmation = false, closeOnSuccess = true) {
   const result = parseVimrc(vimrc.value)
   preferences.value = result.preferences
   mappings.value = result.mappings
   configWarnings.value = result.warnings
   localStorage.setItem('learning-vim:vimrc', vimrc.value)
   if (!result.warnings.length) {
-    vimConfigOpen.value = false
+    if (closeOnSuccess) vimConfigOpen.value = false
     if (showConfirmation) showWorkspaceNotice(t.value.configApplied)
   }
+}
+
+function resetVimConfig() {
+  vimrc.value = initialVimrc
+  applyConfig(false, false)
+  showWorkspaceNotice(t.value.configReset)
 }
 
 function reloadApp() {
@@ -707,7 +717,11 @@ onBeforeUnmount(() => {
         <ul v-if="configWarnings.length" class="config-warnings">
           <li v-for="warning in configWarnings" :key="warning">{{ warning }}</li>
         </ul>
-        <button class="apply-button" type="button" @click="applyConfig(true)">{{ t.apply }}</button>
+        <div class="config-actions">
+          <button class="apply-button" type="button" @click="applyConfig(true)">{{ t.apply }}</button>
+          <button class="reset-config-button" type="button" @click="resetVimConfig">{{ t.resetConfig }}</button>
+        </div>
+        <p class="reset-config-help">{{ t.resetConfigHelp }}</p>
         <div class="data-tools">
           <div>
             <h3>{{ t.learningData }}</h3>
