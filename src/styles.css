@@ -46,6 +46,13 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, .cm-editor.c
 }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 .sync-note { color: var(--muted); font-size: 12px; }
+.github-link {
+  display: flex; align-items: center; gap: 6px; color: var(--navy); text-decoration: none;
+  font-size: 12px; font-weight: 600;
+}
+.github-link:hover .github-label { text-decoration: underline; text-underline-offset: 3px; }
+.github-link:focus-visible { outline: 3px solid rgba(229, 102, 58, 0.5); outline-offset: 3px; border-radius: 2px; }
+.github-icon { display: block; width: 18px; height: 18px; flex: none; }
 select, .quiet-button {
   border: 1px solid var(--line); background: transparent; padding: 7px 10px; border-radius: 4px; font-size: 13px;
 }
@@ -187,6 +194,10 @@ kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #d
   .mobile-config-button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: transparent; font-size: 14px; }
   .mobile-config-button:hover { border-color: var(--navy); }
   .topbar-actions { min-width: 0; gap: 4px; }
+  .github-link { width: 30px; height: 30px; justify-content: center; border: 1px solid var(--line); border-radius: 4px; }
+  .github-link:hover { border-color: var(--navy); }
+  .github-label { display: none; }
+  .github-icon { width: 16px; height: 16px; }
   .view-controls { display: none; }
   .view-button { width: 27px; height: 26px; justify-content: center; padding: 0; }
   .topbar select { width: 86px; height: 30px; padding: 3px 6px; font-size: 12px; }
