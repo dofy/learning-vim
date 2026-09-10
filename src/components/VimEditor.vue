@@ -254,7 +254,6 @@ function createEditor() {
   )
   editor.dom.classList.toggle('vim-no-hlsearch', !runtimePreferences.highlightSearch)
   reportStatus(editor.state)
-  editor.focus()
 }
 
 onMounted(createEditor)

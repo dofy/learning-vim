@@ -148,6 +148,10 @@ select {
 .lesson-copy pre { overflow: auto; padding: 16px; color: #e5edf2; background: var(--navy); }
 .lesson-copy pre code { color: inherit; }
 .lesson-copy a { color: #166b74; text-underline-offset: 3px; }
+.local-vim-note {
+  max-width: 760px; margin: 20px clamp(24px, 4vw, 54px) -8px; padding: 10px 12px;
+  border-left: 3px solid var(--sea); color: #40596b; background: #edf3ef; font-size: 13px; line-height: 1.55;
+}
 .state-message { padding: 32px; color: var(--muted); }
 .state-message.error { color: #a63726; }
 
@@ -292,6 +296,7 @@ select {
   .data-tools { align-items: stretch; flex-direction: column; gap: 12px; }
   .data-actions button { flex: 1; }
   .lesson-copy { padding: 24px 20px 70px; }
+  .local-vim-note { margin: 16px 20px -4px; }
 }
 
 @media (max-width: 360px) {

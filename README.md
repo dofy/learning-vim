@@ -35,8 +35,9 @@ somewhere else. Learning Vim keeps the whole loop in one focused workspace:
 - ⚙️ Load a safe `.vimrc` subset for mappings and common editor options.
 
 The layout is built for uninterrupted practice: the header and footer stay in
-place while the course map, lesson, and editor scroll independently. On smaller
-screens, the same workspace becomes a clean Read / Practice switcher.
+place while the course map, lesson, and editor scroll independently. Tablets use
+a clean Read / Practice switcher; phones keep a focused reading view, while the
+practice editor remains available on larger screens with a physical keyboard.
 
 ## Course content stays independent
 
@@ -82,7 +83,7 @@ pnpm build
 pnpm preview
 ```
 
-## What version 1 supports
+## What the current version supports
 
 The current editor uses CodeMirror 6 with `@replit/codemirror-vim`. It covers
 the everyday Vim motions and editing workflow used throughout the course.
@@ -115,19 +116,13 @@ The generated site includes `public/CNAME` for `learning-vim.phpz.org`.
 
 ## Engine boundary
 
-Version 1 deliberately uses the maintained CodeMirror Vim engine. The available
-Vim WebAssembly port is still experimental, depends on browser shared-memory
-features, and embeds an older Vim runtime. Real buffers and windows, external
-shell commands, arbitrary Vimscript, and plugins therefore remain outside the
-stable editor. The editor component is isolated so a production-ready Vim/Wasm
-engine can replace it later without rewriting the course interface.
-
-## Next on the voyage
-
-- Optional real Vim / WebAssembly lab when browser support is dependable
-- Structured exercises published alongside the source lessons
-- More language parsers for future non-Markdown practice files
-- Optional account-based sync without removing local-first usage
+The current version deliberately uses the maintained CodeMirror Vim engine. It
+provides the motion and text-editing workflow used throughout the course, but it
+does not emulate real Vim buffers and windows, external shell commands,
+arbitrary Vimscript, or plugins. Chapters that rely on desktop-only behavior are
+marked in the lesson pane. The available Vim WebAssembly port does provide a
+real, older Vim runtime, but remains experimental and depends on browser
+shared-memory features, so it is not used by the stable editor.
 
 Course content comes from [`dofy/learn-vim`](https://github.com/dofy/learn-vim).
 The interactive web application is maintained by

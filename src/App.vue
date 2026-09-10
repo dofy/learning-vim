@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import MarkdownIt from 'markdown-it'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createBackup, parseBackup } from './backup'
 import AppToast from './components/AppToast.vue'
-import VimEditor from './components/VimEditor.vue'
 import type { CourseFileLanguage, CourseFileRole, CourseManifest, EditorStatus, Locale } from './types'
 import type { ClipboardResult } from './vimClipboard'
 import { defaultPreferences, parseVimrc } from './vimrc'
+
+const VimEditor = defineAsyncComponent(() => import('./components/VimEditor.vue'))
 
 const labels = {
   en: {
@@ -24,6 +25,8 @@ const labels = {
     applyFileConfig: 'Apply this config', configApplied: 'Vim config applied', configReset: 'Default Vim config restored', clipboardCopied: 'Copied to system clipboard',
     clipboardBlocked: 'System clipboard permission was denied', closePreview: 'Close file preview',
     readOnlyPreview: 'Read-only file preview', sourceOnlyVimrc: 'This course can only source vimrc.vim or ~/.vimrc.',
+    closeConfig: 'Close Vim config',
+    localVimNote: 'Some commands in this chapter require desktop Vim. On a desktop or tablet, the web editor still supports the motion and text-editing examples.',
   },
   'zh-CN': {
     course: '课程航线', lesson: '课程正文', practice: '练习缓冲区', reset: '重置缓冲区',
@@ -40,6 +43,8 @@ const labels = {
     applyFileConfig: '应用此配置', configApplied: 'Vim 配置已应用', configReset: '已恢复初始 Vim 配置', clipboardCopied: '已复制到系统剪贴板',
     clipboardBlocked: '浏览器未允许写入系统剪贴板', closePreview: '关闭文件预览',
     readOnlyPreview: '文件只读预览', sourceOnlyVimrc: '本课程仅支持 source vimrc.vim 或 ~/.vimrc。',
+    closeConfig: '关闭 Vim 配置',
+    localVimNote: '本章部分命令需要在本机 Vim 中运行；在电脑或平板的网页练习区仍可练习其中的移动和文本操作。',
   },
   ja: {
     course: 'コースマップ', lesson: 'レッスン', practice: '練習バッファ', reset: 'バッファを戻す',
@@ -56,6 +61,8 @@ const labels = {
     applyFileConfig: 'この設定を適用', configApplied: 'Vim 設定を適用しました', configReset: 'Vim の初期設定に戻しました', clipboardCopied: 'システムのクリップボードにコピーしました',
     clipboardBlocked: 'システムのクリップボードへの書き込みが許可されていません', closePreview: 'ファイル表示を閉じる',
     readOnlyPreview: 'ファイルの読み取り専用表示', sourceOnlyVimrc: 'このコースでは vimrc.vim または ~/.vimrc のみ source できます。',
+    closeConfig: 'Vim 設定を閉じる',
+    localVimNote: 'この章の一部のコマンドにはローカルの Vim が必要です。パソコンまたはタブレットでは、移動とテキスト編集をウェブエディターでも練習できます。',
   },
 } as const
 
@@ -118,8 +125,13 @@ const workspaceNoticeError = ref(false)
 const previewFileName = ref('')
 const previewSource = ref('')
 const previewOpen = ref(false)
+const vimConfigDialog = ref<HTMLElement>()
+const previewDialog = ref<HTMLElement>()
 let workspaceNoticeTimer: number | undefined
 let editorFileLoadId = 0
+let lessonLoadId = 0
+let configReturnFocus: HTMLElement | null = null
+let previewReturnFocus: HTMLElement | null = null
 
 const t = computed(() => labels[locale.value])
 const lessons = computed(() => manifest.value?.lessons ?? [])
@@ -136,6 +148,7 @@ const activeEditorFile = computed(() => editorFiles.value.find((file) => file.na
 const showNav = computed(() => phoneViewport.value || navVisible.value)
 const showLesson = computed(() => phoneViewport.value || tabletViewport.value || lessonVisible.value)
 const currentLessonIndex = computed(() => lessons.value.findIndex((lesson) => lesson.id === lessonId.value))
+const requiresLocalVim = computed(() => ['chapter02', 'chapter03', 'chapter05', 'chapter11'].includes(lessonId.value))
 const hasPreviousLesson = computed(() => currentLessonIndex.value > 0)
 const hasNextLesson = computed(() => currentLessonIndex.value >= 0 && currentLessonIndex.value < lessons.value.length - 1)
 const renderedLesson = computed(() => md.render(source.value))
@@ -184,22 +197,27 @@ function initialLocale(): Locale {
 async function loadLesson() {
   const lesson = currentLesson.value
   if (!lesson) return
+  const loadId = ++lessonLoadId
   loading.value = true
   error.value = ''
   try {
     const response = await fetch(`/course/${lesson.files[locale.value]}`)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    source.value = await response.text()
+    const lessonSource = await response.text()
+    if (loadId !== lessonLoadId) return
+    source.value = lessonSource
     const preferredFile = editorFiles.value.some((file) => file.name === activeFileName.value)
       ? activeFileName.value
       : `${lesson.id}.md`
-    await loadEditorFile(preferredFile, preferredFile === `${lesson.id}.md` ? source.value : undefined)
+    await loadEditorFile(preferredFile, preferredFile === `${lesson.id}.md` ? lessonSource : undefined)
+    if (loadId !== lessonLoadId) return
     completed.value = readCompleted()
     document.documentElement.lang = locale.value
   } catch (reason) {
+    if (loadId !== lessonLoadId) return
     error.value = `${t.value.error} ${String(reason)}`
   } finally {
-    loading.value = false
+    if (loadId === lessonLoadId) loading.value = false
   }
 }
 
@@ -304,7 +322,10 @@ async function openCourseFile(fileName: string) {
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       previewFileName.value = fileName
       previewSource.value = await response.text()
+      previewReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
       previewOpen.value = true
+      await nextTick()
+      previewDialog.value?.querySelector<HTMLElement>('button')?.focus()
       return
     }
     await loadEditorFile(fileName, fileName === `${lessonId.value}.md` ? source.value : undefined)
@@ -360,6 +381,54 @@ function resetVimConfig() {
   showWorkspaceNotice(t.value.configReset)
 }
 
+async function toggleVimConfig(event: MouseEvent) {
+  if (vimConfigOpen.value) {
+    closeVimConfig()
+    return
+  }
+  configReturnFocus = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  vimConfigOpen.value = true
+  await nextTick()
+  vimConfigDialog.value?.querySelector<HTMLElement>('textarea')?.focus()
+}
+
+function closeVimConfig() {
+  vimConfigOpen.value = false
+  const target = configReturnFocus
+  configReturnFocus = null
+  void nextTick(() => target?.focus())
+}
+
+function closePreview() {
+  previewOpen.value = false
+  const target = previewReturnFocus
+  previewReturnFocus = null
+  void nextTick(() => target?.focus())
+}
+
+function handleDialogKeydown(event: KeyboardEvent, dialog?: HTMLElement) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    if (previewOpen.value) closePreview()
+    else if (vimConfigOpen.value) closeVimConfig()
+    return
+  }
+  if (event.key !== 'Tab' || !dialog) return
+  const focusable = [...dialog.querySelectorAll<HTMLElement>(
+    'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
+  )]
+  if (!focusable.length) return
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 function reloadApp() {
   installUpdate.value()
 }
@@ -411,6 +480,12 @@ function readCompleted(): Record<string, boolean> {
   }
 }
 
+function handleUpdateReady(event: Event) {
+  updateReady.value = true
+  const install = (event as CustomEvent<() => void>).detail
+  if (install) installUpdate.value = install
+}
+
 watch(buffer, (value) => {
   if (loading.value) return
   if (value === editorSource.value) localStorage.removeItem(storageKey('buffer'))
@@ -434,19 +509,16 @@ onMounted(async () => {
   locale.value = initialLocale()
   vimrc.value = localStorage.getItem('learning-vim:vimrc') ?? vimrc.value
   applyConfig()
-  window.addEventListener('learning-vim:update-ready', (event) => {
-    updateReady.value = true
-    const install = (event as CustomEvent<() => void>).detail
-    if (install) installUpdate.value = install
-  })
+  window.addEventListener('learning-vim:update-ready', handleUpdateReady)
   try {
     const response = await fetch('/course/manifest.json')
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     manifest.value = await response.json()
+    const initialLessonId = lessonId.value
     syncLessonFromLocation()
     if (!routeFromLocation()) window.history.replaceState(null, '', lessonPath(locale.value, lessonId.value))
     await nextTick()
-    await loadLesson()
+    if (lessonId.value === initialLessonId) await loadLesson()
   } catch (reason) {
     error.value = `${t.value.error} ${String(reason)}`
     loading.value = false
@@ -459,6 +531,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.clearTimeout(workspaceNoticeTimer)
+  window.removeEventListener('learning-vim:update-ready', handleUpdateReady)
   window.removeEventListener('popstate', syncLessonFromLocation)
   phoneMediaQuery.removeEventListener('change', syncResponsiveViewport)
   narrowTabletMediaQuery.removeEventListener('change', syncResponsiveViewport)
@@ -504,7 +577,7 @@ onBeforeUnmount(() => {
           <option value="zh-CN">简体中文</option>
           <option value="ja">日本語</option>
         </select>
-        <button class="quiet-button" type="button" @click="vimConfigOpen = !vimConfigOpen">
+        <button class="quiet-button" type="button" @click="toggleVimConfig">
           {{ t.config }}
         </button>
         <a
@@ -589,7 +662,10 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="loading" class="state-message">{{ t.loading }}</p>
           <p v-else-if="error" class="state-message error">{{ error }}</p>
-          <div v-else class="lesson-copy" @click="handleLessonLink" v-html="renderedLesson" />
+          <template v-else>
+            <p v-if="requiresLocalVim" class="local-vim-note">{{ t.localVimNote }}</p>
+            <div class="lesson-copy" @click="handleLessonLink" v-html="renderedLesson" />
+          </template>
         </article>
 
         <section
@@ -706,11 +782,11 @@ onBeforeUnmount(() => {
       />
     </div>
 
-    <div v-if="vimConfigOpen" class="config-backdrop" @click.self="vimConfigOpen = false">
-      <section class="config-panel" role="dialog" aria-modal="true" :aria-label="t.config">
+    <div v-if="vimConfigOpen" class="config-backdrop" @click.self="closeVimConfig">
+      <section ref="vimConfigDialog" class="config-panel" role="dialog" aria-modal="true" :aria-label="t.config" @keydown="handleDialogKeydown($event, vimConfigDialog)">
         <div class="config-heading">
           <h2>{{ t.config }}</h2>
-          <button type="button" aria-label="Close" @click="vimConfigOpen = false">×</button>
+          <button type="button" :aria-label="t.closeConfig" @click="closeVimConfig">×</button>
         </div>
         <p>{{ t.configHelp }}</p>
         <textarea v-model="vimrc" spellcheck="false" aria-label="vimrc" />
@@ -734,6 +810,7 @@ onBeforeUnmount(() => {
               ref="importInput"
               class="visually-hidden"
               type="file"
+              tabindex="-1"
               accept="application/json,.json"
               @change="importLearningData"
             >
@@ -743,14 +820,14 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
-    <div v-if="previewOpen" class="config-backdrop" @click.self="previewOpen = false">
-      <section class="file-preview-panel" role="dialog" aria-modal="true" :aria-label="t.readOnlyPreview">
+    <div v-if="previewOpen" class="config-backdrop" @click.self="closePreview">
+      <section ref="previewDialog" class="file-preview-panel" role="dialog" aria-modal="true" :aria-label="t.readOnlyPreview" @keydown="handleDialogKeydown($event, previewDialog)">
         <div class="config-heading">
           <div>
             <span>{{ t.readOnlyPreview }}</span>
             <h2>{{ previewFileName }}</h2>
           </div>
-          <button type="button" :aria-label="t.closePreview" @click="previewOpen = false">×</button>
+          <button type="button" :aria-label="t.closePreview" @click="closePreview">×</button>
         </div>
         <pre><code>{{ previewSource }}</code></pre>
       </section>
