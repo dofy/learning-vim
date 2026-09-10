@@ -12,7 +12,7 @@ const labels = {
     complete: 'Mark complete', completed: 'Completed', config: 'Vim config', apply: 'Apply config',
     configHelp: 'Supports lesson options including line numbers, search highlighting, indentation, tabs, filetype, syntax, and mappings.',
     source: 'Content synced from dofy/learn-vim', loading: 'Loading course…', update: 'A new version is ready.',
-    reload: 'Reload', mobileLesson: 'Read', mobilePractice: 'Practice', error: 'Course could not be loaded.',
+    reload: 'Reload', readMode: 'Read', editMode: 'Edit', error: 'Course could not be loaded.',
     showNav: 'Show course map', hideNav: 'Hide course map', showLesson: 'Show lesson', hideLesson: 'Hide lesson',
     contentBy: 'Course content', previous: 'Previous lesson', next: 'Next lesson',
     original: 'Course copy', modified: 'Saved locally', line: 'Line', learningData: 'Learning data',
@@ -24,7 +24,7 @@ const labels = {
     complete: '标记完成', completed: '已完成', config: 'Vim 配置', apply: '应用配置',
     configHelp: '支持课程中的行号、搜索高亮、缩进、Tab、filetype、syntax 和 map 系列配置。',
     source: '课程同步自 dofy/learn-vim', loading: '正在装载课程…', update: '新版本已准备好。',
-    reload: '重新载入', mobileLesson: '阅读', mobilePractice: '练习', error: '课程加载失败。',
+    reload: '重新载入', readMode: '阅读', editMode: '编辑', error: '课程加载失败。',
     showNav: '显示导航', hideNav: '隐藏导航', showLesson: '显示正文', hideLesson: '隐藏正文',
     contentBy: '课程内容', previous: '上一课', next: '下一课',
     original: '课程原稿', modified: '已保存到本机', line: '行', learningData: '学习数据',
@@ -36,7 +36,7 @@ const labels = {
     complete: '完了にする', completed: '完了', config: 'Vim 設定', apply: '設定を適用',
     configHelp: '行番号、検索ハイライト、インデント、Tab、filetype、syntax、map 設定に対応します。',
     source: 'dofy/learn-vim から同期', loading: 'コースを読み込み中…', update: '新しい版があります。',
-    reload: '再読み込み', mobileLesson: '読む', mobilePractice: '練習', error: 'コースを読み込めません。',
+    reload: '再読み込み', readMode: '読む', editMode: '編集', error: 'コースを読み込めません。',
     showNav: 'ナビを表示', hideNav: 'ナビを隠す', showLesson: '本文を表示', hideLesson: '本文を隠す',
     contentBy: 'コース内容', previous: '前のレッスン', next: '次のレッスン',
     original: '教材の原文', modified: '端末に保存済み', line: '行', learningData: '学習データ',
@@ -70,7 +70,7 @@ const completed = ref<Record<string, boolean>>({})
 const vimrc = ref('syntax on\nset number\nset tabstop=4\n" Try: inoremap jj <Esc>')
 const vimConfigOpen = ref(false)
 const configWarnings = ref<string[]>([])
-const mobilePane = ref<'lesson' | 'practice'>('lesson')
+const workspaceMode = ref<'read' | 'edit'>('read')
 const updateReady = ref(false)
 const preferences = ref({ ...defaultPreferences })
 const mappings = ref<ReturnType<typeof parseVimrc>['mappings']>([])
@@ -78,8 +78,11 @@ const installUpdate = ref<() => void>(() => window.location.reload())
 const appVersion = __APP_VERSION__
 const navVisible = ref(localStorage.getItem('learning-vim:nav-visible') !== 'false')
 const lessonVisible = ref(localStorage.getItem('learning-vim:lesson-visible') !== 'false')
-const mobileMediaQuery = window.matchMedia('(max-width: 720px)')
-const mobileViewport = ref(mobileMediaQuery.matches)
+const phoneMediaQuery = window.matchMedia('(max-width: 720px)')
+const narrowTabletMediaQuery = window.matchMedia('(min-width: 721px) and (max-width: 1050px)')
+const touchTabletMediaQuery = window.matchMedia('(min-width: 721px) and (max-width: 1366px) and (pointer: coarse)')
+const phoneViewport = ref(phoneMediaQuery.matches)
+const tabletViewport = ref(narrowTabletMediaQuery.matches || touchTabletMediaQuery.matches)
 const editorStatus = ref<EditorStatus>({ cursorLine: 1, totalLines: 1, dirty: false })
 const importInput = ref<HTMLInputElement>()
 const backupError = ref('')
@@ -87,8 +90,8 @@ const backupError = ref('')
 const t = computed(() => labels[locale.value])
 const lessons = computed(() => manifest.value?.lessons ?? [])
 const currentLesson = computed(() => lessons.value.find((lesson) => lesson.id === lessonId.value))
-const showNav = computed(() => mobileViewport.value || navVisible.value)
-const showLesson = computed(() => mobileViewport.value || lessonVisible.value)
+const showNav = computed(() => phoneViewport.value || navVisible.value)
+const showLesson = computed(() => phoneViewport.value || tabletViewport.value || lessonVisible.value)
 const currentLessonIndex = computed(() => lessons.value.findIndex((lesson) => lesson.id === lessonId.value))
 const hasPreviousLesson = computed(() => currentLessonIndex.value > 0)
 const hasNextLesson = computed(() => currentLessonIndex.value >= 0 && currentLessonIndex.value < lessons.value.length - 1)
@@ -196,8 +199,10 @@ function updateDocumentMetadata() {
   setMetaContent('meta[name="twitter:description"]', description)
 }
 
-function syncMobileViewport(event: MediaQueryListEvent) {
-  mobileViewport.value = event.matches
+function syncResponsiveViewport() {
+  phoneViewport.value = phoneMediaQuery.matches
+  tabletViewport.value = !phoneViewport.value && (narrowTabletMediaQuery.matches || touchTabletMediaQuery.matches)
+  if (phoneViewport.value) workspaceMode.value = 'read'
 }
 
 function handleLessonLink(event: MouseEvent) {
@@ -239,7 +244,7 @@ function toggleNav() {
 function toggleLesson() {
   lessonVisible.value = !lessonVisible.value
   localStorage.setItem('learning-vim:lesson-visible', String(lessonVisible.value))
-  if (!lessonVisible.value) mobilePane.value = 'practice'
+  if (!lessonVisible.value) workspaceMode.value = 'edit'
 }
 
 function exportLearningData() {
@@ -319,12 +324,16 @@ onMounted(async () => {
     loading.value = false
   }
   window.addEventListener('popstate', syncLessonFromLocation)
-  mobileMediaQuery.addEventListener('change', syncMobileViewport)
+  phoneMediaQuery.addEventListener('change', syncResponsiveViewport)
+  narrowTabletMediaQuery.addEventListener('change', syncResponsiveViewport)
+  touchTabletMediaQuery.addEventListener('change', syncResponsiveViewport)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('popstate', syncLessonFromLocation)
-  mobileMediaQuery.removeEventListener('change', syncMobileViewport)
+  phoneMediaQuery.removeEventListener('change', syncResponsiveViewport)
+  narrowTabletMediaQuery.removeEventListener('change', syncResponsiveViewport)
+  touchTabletMediaQuery.removeEventListener('change', syncResponsiveViewport)
 })
 </script>
 
@@ -338,20 +347,7 @@ onBeforeUnmount(() => {
       </a>
       <div class="topbar-actions">
         <span class="sync-note">{{ t.source }}</span>
-        <a
-          class="github-link"
-          href="https://github.com/dofy/learning-vim"
-          target="_blank"
-          rel="noreferrer"
-          aria-label="GitHub · dofy/learning-vim"
-          title="GitHub · dofy/learning-vim"
-        >
-          <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="currentColor" d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.52-1.34-1.28-1.7-1.28-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.78 1.07.78 2.16v3.2c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
-          </svg>
-          <span class="github-label">dofy/learning-vim</span>
-        </a>
-        <div class="view-controls" aria-label="Layout controls">
+        <div v-if="!phoneViewport" class="view-controls" aria-label="Layout controls">
           <button
             class="view-button"
             :class="{ active: navVisible }"
@@ -363,6 +359,7 @@ onBeforeUnmount(() => {
             {{ navVisible ? t.hideNav : t.showNav }}
           </button>
           <button
+            v-if="!tabletViewport"
             class="view-button"
             :class="{ active: lessonVisible }"
             type="button"
@@ -381,13 +378,18 @@ onBeforeUnmount(() => {
         <button class="quiet-button" type="button" @click="vimConfigOpen = !vimConfigOpen">
           {{ t.config }}
         </button>
-        <button
-          class="mobile-config-button"
-          type="button"
-          :aria-label="t.config"
-          :title="t.config"
-          @click="vimConfigOpen = !vimConfigOpen"
-        >⚙</button>
+        <a
+          class="github-link"
+          href="https://github.com/dofy/learning-vim"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="GitHub · dofy/learning-vim"
+          title="GitHub · dofy/learning-vim"
+        >
+          <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.52-1.34-1.28-1.7-1.28-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.78 1.07.78 2.16v3.2c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
+          </svg>
+        </a>
       </div>
     </header>
 
@@ -395,7 +397,7 @@ onBeforeUnmount(() => {
       {{ t.update }} <button type="button" @click="reloadApp">{{ t.reload }}</button>
     </div>
 
-    <main class="workspace" :class="{ 'nav-hidden': !showNav }">
+    <main class="workspace" :class="{ 'nav-hidden': !showNav, 'tablet-layout': tabletViewport }">
       <div class="navigation-shell">
         <aside v-if="showNav" class="course-map">
           <div class="course-map-heading">
@@ -405,47 +407,49 @@ onBeforeUnmount(() => {
           <div class="progress-track"><span :style="{ width: `${progress}%` }" /></div>
           <nav aria-label="Course chapters">
             <button
-              v-for="(lesson, index) in lessons"
+              v-for="lesson in lessons"
               :key="lesson.id"
               type="button"
               :class="{ active: lesson.id === lessonId, done: completed[lesson.id] }"
               @click="chooseLesson(lesson.id)"
             >
-              <span class="chapter-index">{{ String(index + 1).padStart(2, '0') }}</span>
-              <span>{{ lesson.titles[locale] }}</span>
+              <span class="chapter-title">{{ lesson.titles[locale] }}</span>
               <span class="completion-dot" aria-hidden="true" />
             </button>
           </nav>
         </aside>
 
-        <div class="mobile-tabs" :class="{ single: !showLesson }" role="tablist">
-          <button
-            v-if="showLesson"
-            type="button"
-            :class="{ active: mobilePane === 'lesson' }"
-            :aria-label="t.mobileLesson"
-            :title="t.mobileLesson"
-            @click="mobilePane = 'lesson'"
-          >
-            <span class="mobile-tab-icon read-tab-icon" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            :class="{ active: mobilePane === 'practice' }"
-            :aria-label="t.mobilePractice"
-            :title="t.mobilePractice"
-            @click="mobilePane = 'practice'"
-          >
-            <span class="mobile-tab-icon practice-tab-icon" aria-hidden="true">›_</span>
-          </button>
-        </div>
       </div>
 
       <section class="learning-area" :class="{ 'lesson-hidden': !showLesson }">
+        <div v-if="tabletViewport" class="pane-tabs" role="tablist" :aria-label="`${t.readMode} / ${t.editMode}`">
+          <button
+            type="button"
+            :class="{ active: workspaceMode === 'read' }"
+            role="tab"
+            :aria-selected="workspaceMode === 'read'"
+            :aria-label="t.readMode"
+            @click="workspaceMode = 'read'"
+          >
+            <span class="pane-tab-icon read-tab-icon" aria-hidden="true" />
+            <span>{{ t.readMode }}</span>
+          </button>
+          <button
+            type="button"
+            :class="{ active: workspaceMode === 'edit' }"
+            role="tab"
+            :aria-selected="workspaceMode === 'edit'"
+            :aria-label="t.editMode"
+            @click="workspaceMode = 'edit'"
+          >
+            <span class="pane-tab-icon practice-tab-icon" aria-hidden="true">›_</span>
+            <span>{{ t.editMode }}</span>
+          </button>
+        </div>
         <article
           v-if="showLesson"
           class="lesson-pane"
-          :class="{ 'mobile-hidden': mobilePane !== 'lesson' }"
+          :class="{ 'pane-hidden': tabletViewport && workspaceMode !== 'read' }"
         >
           <div class="pane-heading">
             <span>{{ t.lesson }}</span>
@@ -463,7 +467,11 @@ onBeforeUnmount(() => {
           <div v-else class="lesson-copy" @click="handleLessonLink" v-html="renderedLesson" />
         </article>
 
-        <section class="practice-pane" :class="{ 'mobile-hidden': mobilePane !== 'practice' }">
+        <section
+          v-if="!phoneViewport"
+          class="practice-pane"
+          :class="{ 'pane-hidden': tabletViewport && workspaceMode !== 'edit' }"
+        >
           <div class="pane-heading practice-heading">
             <div class="practice-title">
               <span>{{ t.practice }}</span>

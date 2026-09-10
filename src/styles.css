@@ -47,19 +47,26 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, .cm-editor.c
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 .sync-note { color: var(--muted); font-size: 12px; }
 .github-link {
-  display: flex; align-items: center; gap: 6px; color: var(--navy); text-decoration: none;
-  font-size: 12px; font-weight: 600;
+  width: 30px; height: 30px; display: grid; flex: none; place-items: center;
+  border: 1px solid var(--line); border-radius: 4px; color: var(--navy); text-decoration: none;
 }
-.github-link:hover .github-label { text-decoration: underline; text-underline-offset: 3px; }
+.github-link:hover { border-color: var(--navy); }
 .github-link:focus-visible { outline: 3px solid rgba(229, 102, 58, 0.5); outline-offset: 3px; border-radius: 2px; }
-.github-icon { display: block; width: 18px; height: 18px; flex: none; }
+.github-icon { display: block; width: 16px; height: 16px; }
 select, .quiet-button {
-  border: 1px solid var(--line); background: transparent; padding: 7px 10px; border-radius: 4px; font-size: 13px;
+  height: 30px; border: 1px solid var(--line); background: transparent; padding: 0 10px; border-radius: 4px; font-size: 13px;
+}
+select {
+  appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m5 7 5 5 5-5' fill='none' stroke='%2317324d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 12px;
 }
 .quiet-button:hover, select:hover { border-color: var(--navy); }
-.mobile-config-button { display: none; }
-.view-controls { display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 4px; }
-.view-button { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 0; border-radius: 2px; color: var(--muted); background: transparent; font-size: 12px; }
+.view-controls { height: 30px; display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 4px; }
+.view-button { height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 0; border-radius: 2px; color: var(--muted); background: transparent; font-size: 12px; }
 .view-button:hover { color: var(--navy); background: #ece9e1; }
 .view-button.active { color: var(--navy); background: #e3dfd5; }
 .view-icon { width: 13px; height: 11px; border: 1px solid currentColor; }
@@ -94,13 +101,12 @@ select, .quiet-button {
 .progress-track span { display: block; height: 100%; background: var(--orange); transition: width 180ms ease-out; }
 .course-map nav { display: grid; gap: 3px; }
 .course-map nav button {
-  min-width: 0; display: grid; grid-template-columns: 28px minmax(0, 1fr) 8px; align-items: center;
+  min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 8px; align-items: center;
   gap: 8px; padding: 9px 8px; border: 0; border-radius: 3px; background: transparent; text-align: left;
+  font-size: 14px; line-height: 1.4;
 }
 .course-map nav button:hover { background: rgba(23, 50, 77, 0.06); }
 .course-map nav button.active { color: white; background: var(--navy); }
-.chapter-index { color: var(--muted); font: 500 11px 'IBM Plex Mono', monospace; }
-.active .chapter-index { color: #b7c8d5; }
 .completion-dot { width: 7px; height: 7px; border: 1px solid #969d9f; border-radius: 50%; }
 .done .completion-dot { border-color: var(--sea); background: var(--sea); }
 
@@ -175,7 +181,53 @@ kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #d
 .data-actions button:hover { border-color: var(--navy); }
 .data-error { color: #a63726 !important; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
-.mobile-tabs { display: none; }
+.pane-tabs { display: none; }
+
+.workspace.tablet-layout .learning-area,
+.workspace.tablet-layout .learning-area.lesson-hidden {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: none;
+}
+.workspace.tablet-layout .pane-tabs {
+  display: grid;
+  flex: 0 0 38px;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.pane-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pane-tabs button + button { border-left: 1px solid var(--line); }
+.pane-tabs button.active { border-bottom-color: var(--orange); color: var(--navy); background: var(--paper-bright); }
+.pane-tab-icon { display: block; width: 14px; height: 12px; color: currentColor; }
+.read-tab-icon { position: relative; border: 1px solid currentColor; border-radius: 1px; }
+.read-tab-icon::after { position: absolute; inset: 0 auto 0 50%; border-left: 1px solid currentColor; content: ''; }
+.practice-tab-icon { font: 600 11px/12px 'IBM Plex Mono', monospace; letter-spacing: -2px; }
+.workspace.tablet-layout .lesson-pane,
+.workspace.tablet-layout .practice-pane { flex: 1 1 auto; height: auto; }
+.workspace.tablet-layout .course-map-heading h1 { font-size: 14px; }
+.workspace.tablet-layout .course-map-heading span { font-size: 10px; }
+.workspace.tablet-layout .course-map nav button {
+  grid-template-columns: minmax(0, 1fr) 7px;
+  gap: 6px;
+  padding: 7px 6px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.workspace.tablet-layout .completion-dot { width: 6px; height: 6px; }
+.pane-hidden { display: none !important; }
 
 @media (max-width: 1050px) {
   .workspace { grid-template-columns: 210px minmax(0, 1fr); }
@@ -191,35 +243,18 @@ kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #d
   .brand-version { display: none; }
   .brand { gap: 7px; font-size: 15px; white-space: nowrap; }
   .brand-mark { width: 26px; height: 26px; font-size: 15px; }
-  .mobile-config-button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: transparent; font-size: 14px; }
-  .mobile-config-button:hover { border-color: var(--navy); }
   .topbar-actions { min-width: 0; gap: 4px; }
-  .github-link { width: 30px; height: 30px; justify-content: center; border: 1px solid var(--line); border-radius: 4px; }
-  .github-link:hover { border-color: var(--navy); }
-  .github-label { display: none; }
-  .github-icon { width: 16px; height: 16px; }
-  .view-controls { display: none; }
   .view-button { width: 27px; height: 26px; justify-content: center; padding: 0; }
-  .topbar select { width: 86px; height: 30px; padding: 3px 6px; font-size: 12px; }
+  .topbar select { width: 86px; padding: 0 30px 0 6px; background-position: right 10px center; font-size: 12px; }
   .workspace, .workspace.nav-hidden { display: flex; flex-direction: column; }
   .navigation-shell { flex: 0 0 32px; display: flex; min-width: 0; border-bottom: 1px solid var(--line); background: #e9e5db; }
   .course-map { flex: 1 1 auto; overflow-x: auto; padding: 0 6px; border: 0; }
   .course-map-heading, .progress-track { display: none; }
   .course-map nav { display: flex; width: max-content; }
-  .course-map nav button { width: 40px; height: 32px; display: block; padding: 0 4px; text-align: center; }
-  .course-map nav button > span:nth-child(2), .completion-dot { display: none; }
-  .chapter-index { font-size: 11px; }
+  .course-map nav button { width: auto; height: 32px; display: block; padding: 0 10px; font-size: 11px; white-space: nowrap; }
+  .completion-dot { display: none; }
   .learning-area, .learning-area.lesson-hidden { flex: 1; min-height: 0; display: block; }
-  .mobile-tabs { display: grid; flex: 0 0 auto; grid-template-columns: 34px 34px; height: 32px; border-left: 1px solid var(--line); background: var(--paper); }
-  .mobile-tabs button { display: grid; place-items: center; padding: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; }
-  .mobile-tabs button + button { border-left: 1px solid var(--line); }
-  .mobile-tabs button.active { border-bottom-color: var(--orange); background: var(--paper-bright); }
-  .mobile-tab-icon { display: block; width: 14px; height: 12px; color: var(--navy); }
-  .read-tab-icon { position: relative; border: 1px solid currentColor; border-radius: 1px; }
-  .read-tab-icon::after { position: absolute; inset: 0 auto 0 50%; border-left: 1px solid currentColor; content: ''; }
-  .practice-tab-icon { font: 600 11px/12px 'IBM Plex Mono', monospace; letter-spacing: -2px; }
-  .lesson-pane, .practice-pane { height: 100%; min-height: 0; }
-  .mobile-tabs.single { grid-template-columns: 34px; }
+  .lesson-pane { height: 100%; min-height: 0; }
   .site-footer { flex-basis: 28px; justify-content: space-between; padding: 0 12px; }
   .footer-source { display: none; }
   .buffer-state, .practice-actions > span:first-child { display: none; }
@@ -228,7 +263,6 @@ kbd { padding: 2px 5px; border: 1px solid #557087; border-radius: 3px; color: #d
   .reset-button { margin-left: 2px; }
   .data-tools { align-items: stretch; flex-direction: column; gap: 12px; }
   .data-actions button { flex: 1; }
-  .mobile-hidden { display: none; }
   .lesson-copy { padding: 24px 20px 70px; }
 }
 
