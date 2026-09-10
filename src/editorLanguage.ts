@@ -1,11 +1,21 @@
-import type { VimPreferences } from './types'
+import type { CourseFileLanguage, VimPreferences } from './types'
 
-export function shouldLoadMarkdownLanguage(
+export function shouldLoadLanguage(
   preferences: Pick<VimPreferences, 'filetypeDetection' | 'syntaxHighlighting'>,
 ) {
-  // Every lesson buffer is a Markdown document. `syntax on` must therefore be
-  // sufficient to load the known language parser, even without `filetype on`.
+  // The file name already tells the course which parser to use. `syntax on`
+  // must be sufficient even when `filetype on` has not been entered yet.
   return preferences.filetypeDetection || preferences.syntaxHighlighting
+}
+
+export const shouldLoadMarkdownLanguage = shouldLoadLanguage
+
+
+export function languageNeedsParser(
+  language: CourseFileLanguage,
+  preferences: Pick<VimPreferences, 'filetypeDetection' | 'syntaxHighlighting'>,
+) {
+  return language !== 'vim' && shouldLoadLanguage(preferences)
 }
 
 export function shouldReconfigureLanguage(changed?: Set<keyof VimPreferences>) {

@@ -1,12 +1,13 @@
 import { CodeMirror, Vim, type CodeMirrorV } from '@replit/codemirror-vim'
-import { courseLessonAtCursor } from './courseFile'
+import { courseFileAtCursor } from './courseFile'
 import type { VimPreferences } from './types'
 import { defaultPreferences } from './vimrc'
 
 export interface VimOptionController {
   preferences: VimPreferences
   update: (patch: Partial<VimPreferences>) => void
-  openLesson?: (lessonId: string) => void
+  openCourseFile?: (fileName: string) => void
+  sourceCurrentFile?: (fileName?: string) => void
 }
 
 const controllers = new WeakMap<object, VimOptionController>()
@@ -65,10 +66,23 @@ export function registerVimOptionBridge() {
 
   Vim.defineAction('openCourseFile', (cm) => {
     const cursor = cm.getCursor()
-    const lessonId = courseLessonAtCursor(cm.getLine(cursor.line), cursor.ch)
-    if (lessonId) controllerFor(cm)?.openLesson?.(lessonId)
+    const fileName = courseFileAtCursor(cm.getLine(cursor.line), cursor.ch)
+    if (fileName) controllerFor(cm)?.openCourseFile?.(fileName)
   })
   Vim.mapCommand('gf', 'action', 'openCourseFile', {}, {})
+
+  // codemirror-vim's default indentAuto adapter drops the motion range and
+  // therefore makes commands such as =% and gg=G indent only the cursor line.
+  Vim.defineOperator('indentAuto', (cm, _args, ranges) => {
+    cm.setSelections(ranges)
+    CodeMirror.commands.indentAuto(cm)
+    return ranges[0].anchor
+  })
+
+  Vim.defineEx('source', 'so', (cm, params) => {
+    const fileName = params.argString.trim()
+    controllerFor(cm)?.sourceCurrentFile?.(fileName === '%' ? undefined : fileName)
+  })
 
   Vim.defineEx('syntax', 'sy', (cm, params) => {
     updateExBoolean(cm, params.argString.trim(), 'syntaxHighlighting')

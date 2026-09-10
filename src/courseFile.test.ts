@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { courseLessonAtCursor } from './courseFile'
+import { courseFileAtCursor, courseLessonAtCursor } from './courseFile'
 
 describe('courseLessonAtCursor', () => {
   it('finds a Markdown course file under the cursor', () => {
@@ -19,5 +19,16 @@ describe('courseLessonAtCursor', () => {
 
   it('does not match a course file away from the cursor', () => {
     expect(courseLessonAtCursor('chapter02.md and chapter03.md', 14)).toBeUndefined()
+  })
+
+  it('finds the chapter 4 workspace files under the cursor', () => {
+    const config = '[vimrc](vimrc.vim)'
+    const demo = 'open chapter04-demo.js with gf'
+    expect(courseFileAtCursor(config, config.indexOf('vimrc.vim') + 2)).toBe('vimrc.vim')
+    expect(courseFileAtCursor(demo, demo.indexOf('demo'))).toBe('chapter04-demo.js')
+  })
+
+  it('does not treat arbitrary paths as course files', () => {
+    expect(courseFileAtCursor('open ../../secret.js', 10)).toBeUndefined()
   })
 })

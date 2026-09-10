@@ -2,8 +2,10 @@
 import MarkdownIt from 'markdown-it'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createBackup, parseBackup } from './backup'
+import AppToast from './components/AppToast.vue'
 import VimEditor from './components/VimEditor.vue'
-import type { CourseManifest, EditorStatus, Locale } from './types'
+import type { CourseFileLanguage, CourseFileRole, CourseManifest, EditorStatus, Locale } from './types'
+import type { ClipboardResult } from './vimClipboard'
 import { defaultPreferences, parseVimrc } from './vimrc'
 
 const labels = {
@@ -18,6 +20,9 @@ const labels = {
     original: 'Course copy', modified: 'Saved locally', learningData: 'Learning data',
     dataHelp: 'Move progress and preferences between browsers without an account.',
     exportData: 'Export data', importData: 'Import data', invalidBackup: 'This backup could not be imported.',
+    applyFileConfig: 'Apply this config', configApplied: 'Vim config applied', clipboardCopied: 'Copied to system clipboard',
+    clipboardBlocked: 'System clipboard permission was denied', closePreview: 'Close file preview',
+    readOnlyPreview: 'Read-only file preview', sourceOnlyVimrc: 'This course can only source vimrc.vim or ~/.vimrc.',
   },
   'zh-CN': {
     course: '课程航线', lesson: '课程正文', practice: '练习缓冲区', reset: '重置缓冲区',
@@ -30,6 +35,9 @@ const labels = {
     original: '课程原稿', modified: '已保存到本机', learningData: '学习数据',
     dataHelp: '无需账号，在不同浏览器之间迁移进度和偏好设置。',
     exportData: '导出数据', importData: '导入数据', invalidBackup: '无法导入这份备份。',
+    applyFileConfig: '应用此配置', configApplied: 'Vim 配置已应用', clipboardCopied: '已复制到系统剪贴板',
+    clipboardBlocked: '浏览器未允许写入系统剪贴板', closePreview: '关闭文件预览',
+    readOnlyPreview: '文件只读预览', sourceOnlyVimrc: '本课程仅支持 source vimrc.vim 或 ~/.vimrc。',
   },
   ja: {
     course: 'コースマップ', lesson: 'レッスン', practice: '練習バッファ', reset: 'バッファを戻す',
@@ -42,10 +50,19 @@ const labels = {
     original: '教材の原文', modified: '端末に保存済み', learningData: '学習データ',
     dataHelp: 'アカウントなしで進捗と設定を別のブラウザへ移行できます。',
     exportData: 'データを書き出す', importData: 'データを読み込む', invalidBackup: 'バックアップを読み込めません。',
+    applyFileConfig: 'この設定を適用', configApplied: 'Vim 設定を適用しました', clipboardCopied: 'システムのクリップボードにコピーしました',
+    clipboardBlocked: 'システムのクリップボードへの書き込みが許可されていません', closePreview: 'ファイル表示を閉じる',
+    readOnlyPreview: 'ファイルの読み取り専用表示', sourceOnlyVimrc: 'このコースでは vimrc.vim または ~/.vimrc のみ source できます。',
   },
 } as const
 
 const md = new MarkdownIt({ html: false, linkify: true, typographer: true })
+interface EditorFile {
+  name: string
+  language: CourseFileLanguage
+  role?: CourseFileRole
+  files: Record<Locale, string>
+}
 const renderLinkOpen = md.renderer.rules.link_open
 md.renderer.rules.link_open = (tokens, index, options, environment, renderer) => {
   const token = tokens[index]
@@ -54,6 +71,10 @@ md.renderer.rules.link_open = (tokens, index, options, environment, renderer) =>
   if (lessonMatch?.[1]) {
     token.attrSet('href', lessonPath(locale.value, lessonMatch[1]))
     token.attrSet('data-lesson-id', lessonMatch[1])
+    token.attrSet('data-course-file', `${lessonMatch[1]}.md`)
+  } else if (href === 'vimrc.vim' || href === 'chapter04-demo.js') {
+    token.attrSet('href', `/course/${locale.value}/${href}`)
+    token.attrSet('data-course-file', href)
   }
   return renderLinkOpen
     ? renderLinkOpen(tokens, index, options, environment, renderer)
@@ -63,7 +84,9 @@ const manifest = ref<CourseManifest>()
 const locale = ref<Locale>('zh-CN')
 const lessonId = ref('chapter01')
 const source = ref('')
+const editorSource = ref('')
 const buffer = ref('')
+const activeFileName = ref('chapter01.md')
 const loading = ref(true)
 const error = ref('')
 const completed = ref<Record<string, boolean>>({})
@@ -86,10 +109,26 @@ const tabletViewport = ref(narrowTabletMediaQuery.matches || touchTabletMediaQue
 const editorStatus = ref<EditorStatus>({ cursorLine: 1, totalLines: 1, dirty: false })
 const importInput = ref<HTMLInputElement>()
 const backupError = ref('')
+const workspaceNotice = ref('')
+const workspaceNoticeError = ref(false)
+const previewFileName = ref('')
+const previewSource = ref('')
+const previewOpen = ref(false)
+let workspaceNoticeTimer: number | undefined
+let editorFileLoadId = 0
 
 const t = computed(() => labels[locale.value])
 const lessons = computed(() => manifest.value?.lessons ?? [])
 const currentLesson = computed(() => lessons.value.find((lesson) => lesson.id === lessonId.value))
+const editorFiles = computed<EditorFile[]>(() => {
+  const lesson = currentLesson.value
+  if (!lesson) return []
+  return [
+    { name: `${lesson.id}.md`, language: 'markdown' as CourseFileLanguage, files: lesson.files },
+    ...(lesson.workspaceFiles ?? []),
+  ]
+})
+const activeEditorFile = computed(() => editorFiles.value.find((file) => file.name === activeFileName.value) ?? editorFiles.value[0])
 const showNav = computed(() => phoneViewport.value || navVisible.value)
 const showLesson = computed(() => phoneViewport.value || tabletViewport.value || lessonVisible.value)
 const currentLessonIndex = computed(() => lessons.value.findIndex((lesson) => lesson.id === lessonId.value))
@@ -107,8 +146,12 @@ const editorPosition = computed(() => {
   if (locale.value === 'ja') return `${cursorLine} / ${totalLines} 行目`
   return `Line ${cursorLine} of ${totalLines}`
 })
+const editorPositionCompact = computed(() => `${editorStatus.value.cursorLine}/${editorStatus.value.totalLines}`)
 
-function storageKey(kind: string) {
+function storageKey(kind: string, fileName = activeFileName.value) {
+  if (kind === 'buffer' && fileName !== `${lessonId.value}.md`) {
+    return `learning-vim:${kind}:${locale.value}:${lessonId.value}:${fileName}`
+  }
   return `learning-vim:${kind}:${locale.value}:${lessonId.value}`
 }
 
@@ -143,7 +186,10 @@ async function loadLesson() {
     const response = await fetch(`/course/${lesson.files[locale.value]}`)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     source.value = await response.text()
-    buffer.value = localStorage.getItem(storageKey('buffer')) ?? source.value
+    const preferredFile = editorFiles.value.some((file) => file.name === activeFileName.value)
+      ? activeFileName.value
+      : `${lesson.id}.md`
+    await loadEditorFile(preferredFile, preferredFile === `${lesson.id}.md` ? source.value : undefined)
     completed.value = readCompleted()
     document.documentElement.lang = locale.value
   } catch (reason) {
@@ -155,6 +201,7 @@ async function loadLesson() {
 
 function chooseLesson(id: string, updateHistory = true) {
   if (!lessons.value.some((lesson) => lesson.id === id)) return
+  if (id !== lessonId.value) activeFileName.value = `${id}.md`
   lessonId.value = id
   const path = lessonPath(locale.value, id)
   if (updateHistory && window.location.pathname !== path) {
@@ -212,16 +259,78 @@ function syncResponsiveViewport() {
 }
 
 function handleLessonLink(event: MouseEvent) {
-  const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[data-lesson-id]')
-  const targetLesson = link?.dataset.lessonId
-  if (!targetLesson) return
+  const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[data-course-file]')
+  const fileName = link?.dataset.courseFile
+  if (!fileName) return
   event.preventDefault()
-  chooseLesson(targetLesson)
+  void openCourseFile(fileName)
 }
 
 function resetBuffer() {
-  buffer.value = source.value
+  buffer.value = editorSource.value
   localStorage.removeItem(storageKey('buffer'))
+}
+
+async function loadEditorFile(fileName: string, knownSource?: string) {
+  const file = editorFiles.value.find((candidate) => candidate.name === fileName)
+  if (!file) return false
+  const loadId = ++editorFileLoadId
+  const fileSource: string = knownSource ?? await fetch(`/course/${file.files[locale.value]}`).then((response) => {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    return response.text()
+  })
+  if (loadId !== editorFileLoadId) return false
+  activeFileName.value = fileName
+  editorSource.value = fileSource
+  buffer.value = localStorage.getItem(storageKey('buffer', fileName)) ?? fileSource
+  return true
+}
+
+async function openCourseFile(fileName: string) {
+  const chapter = fileName.match(/^(chapter\d{2})\.md$/)?.[1]
+  if (chapter && chapter !== lessonId.value) {
+    chooseLesson(chapter)
+    return
+  }
+  const file = editorFiles.value.find((candidate) => candidate.name === fileName)
+  if (!file) return
+  try {
+    if (phoneViewport.value && fileName !== `${lessonId.value}.md`) {
+      const response = await fetch(`/course/${file.files[locale.value]}`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      previewFileName.value = fileName
+      previewSource.value = await response.text()
+      previewOpen.value = true
+      return
+    }
+    await loadEditorFile(fileName, fileName === `${lessonId.value}.md` ? source.value : undefined)
+    if (tabletViewport.value) workspaceMode.value = 'edit'
+  } catch (reason) {
+    showWorkspaceNotice(`${t.value.error} ${String(reason)}`, true)
+  }
+}
+
+function showWorkspaceNotice(message: string, isError = false) {
+  window.clearTimeout(workspaceNoticeTimer)
+  workspaceNotice.value = message
+  workspaceNoticeError.value = isError
+  workspaceNoticeTimer = window.setTimeout(() => { workspaceNotice.value = '' }, 2400)
+}
+
+async function sourceCourseConfig(fileName?: string) {
+  const requested = (fileName || activeFileName.value).replace(/^\.\//, '')
+  const target = ['vimrc.vim', '.vimrc', '~/.vimrc'].includes(requested) ? 'vimrc.vim' : requested
+  if (target !== 'vimrc.vim') {
+    showWorkspaceNotice(t.value.sourceOnlyVimrc, true)
+    return
+  }
+  if (activeFileName.value !== target && !await loadEditorFile(target)) return
+  vimrc.value = buffer.value
+  applyConfig(true)
+}
+
+function handleClipboard(result: ClipboardResult) {
+  showWorkspaceNotice(result.ok ? t.value.clipboardCopied : t.value.clipboardBlocked, !result.ok)
 }
 
 function toggleComplete() {
@@ -229,13 +338,16 @@ function toggleComplete() {
   localStorage.setItem(`learning-vim:completed:${locale.value}`, JSON.stringify(completed.value))
 }
 
-function applyConfig() {
+function applyConfig(showConfirmation = false) {
   const result = parseVimrc(vimrc.value)
   preferences.value = result.preferences
   mappings.value = result.mappings
   configWarnings.value = result.warnings
   localStorage.setItem('learning-vim:vimrc', vimrc.value)
-  if (!result.warnings.length) vimConfigOpen.value = false
+  if (!result.warnings.length) {
+    vimConfigOpen.value = false
+    if (showConfirmation) showWorkspaceNotice(t.value.configApplied)
+  }
 }
 
 function reloadApp() {
@@ -291,7 +403,7 @@ function readCompleted(): Record<string, boolean> {
 
 watch(buffer, (value) => {
   if (loading.value) return
-  if (value === source.value) localStorage.removeItem(storageKey('buffer'))
+  if (value === editorSource.value) localStorage.removeItem(storageKey('buffer'))
   else localStorage.setItem(storageKey('buffer'), value)
 })
 
@@ -336,6 +448,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  window.clearTimeout(workspaceNoticeTimer)
   window.removeEventListener('popstate', syncLessonFromLocation)
   phoneMediaQuery.removeEventListener('change', syncResponsiveViewport)
   narrowTabletMediaQuery.removeEventListener('change', syncResponsiveViewport)
@@ -398,10 +511,6 @@ onBeforeUnmount(() => {
         </a>
       </div>
     </header>
-
-    <div v-if="updateReady" class="update-banner">
-      {{ t.update }} <button type="button" @click="reloadApp">{{ t.reload }}</button>
-    </div>
 
     <main class="workspace" :class="{ 'nav-hidden': !showNav, 'tablet-layout': tabletViewport }">
       <div class="navigation-shell">
@@ -481,12 +590,15 @@ onBeforeUnmount(() => {
           <div class="pane-heading practice-heading">
             <div class="practice-title">
               <span>{{ t.practice }}</span>
-              <span class="buffer-state" :class="{ modified: editorStatus.dirty }">
-                {{ editorStatus.dirty ? t.modified : t.original }}
-              </span>
+              <span
+                class="buffer-state"
+                :class="{ modified: editorStatus.dirty }"
+                :aria-label="editorStatus.dirty ? t.modified : t.original"
+                :title="editorStatus.dirty ? t.modified : t.original"
+              />
             </div>
             <div class="practice-actions">
-              <span>{{ editorPosition }}</span>
+              <span class="editor-position" :title="editorPosition">{{ editorPositionCompact }}</span>
               <button
                 class="lesson-step"
                 type="button"
@@ -494,7 +606,10 @@ onBeforeUnmount(() => {
                 :aria-label="t.previous"
                 :title="t.previous"
                 @click="navigateLesson(-1)"
-              >{{ t.previous }}</button>
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m14 5-5 5 5 5m-5-10-5 5 5 5" /></svg>
+                <span class="visually-hidden">{{ t.previous }}</span>
+              </button>
               <button
                 class="lesson-step"
                 type="button"
@@ -502,17 +617,55 @@ onBeforeUnmount(() => {
                 :aria-label="t.next"
                 :title="t.next"
                 @click="navigateLesson(1)"
-              >{{ t.next }}</button>
-              <button class="reset-button" type="button" @click="resetBuffer">{{ t.reset }}</button>
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 5 5 5-5 5m5-10 5 5-5 5" /></svg>
+                <span class="visually-hidden">{{ t.next }}</span>
+              </button>
+              <button
+                v-if="activeEditorFile?.role === 'config'"
+                class="practice-icon-button apply-file-config"
+                type="button"
+                :aria-label="t.applyFileConfig"
+                :title="t.applyFileConfig"
+                @click="sourceCourseConfig()"
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7" /></svg>
+                <span class="visually-hidden">{{ t.applyFileConfig }}</span>
+              </button>
+              <button
+                class="practice-icon-button reset-button"
+                type="button"
+                :aria-label="t.reset"
+                :title="t.reset"
+                @click="resetBuffer"
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 7.2A5.5 5.5 0 1 1 5 12m.2-4.8V3.8M5.2 7.2h3.4" /></svg>
+                <span class="visually-hidden">{{ t.reset }}</span>
+              </button>
             </div>
+          </div>
+          <div v-if="editorFiles.length > 1" class="buffer-tabs" role="tablist" aria-label="Course files">
+            <button
+              v-for="file in editorFiles"
+              :key="file.name"
+              type="button"
+              role="tab"
+              :aria-selected="file.name === activeFileName"
+              :class="{ active: file.name === activeFileName }"
+              @click="openCourseFile(file.name)"
+            >{{ file.name }}</button>
           </div>
           <VimEditor
             v-if="!loading && !error"
             v-model="buffer"
-            :source-value="source"
+            :source-value="editorSource"
+            :file-name="activeFileName"
+            :language="activeEditorFile?.language ?? 'markdown'"
             :preferences="preferences"
             :mappings="mappings"
-            @open-lesson="chooseLesson"
+            @open-course-file="openCourseFile"
+            @source-current-file="sourceCourseConfig"
+            @clipboard="handleClipboard"
             @preferences-change="preferences = $event"
             @status="editorStatus = $event"
           />
@@ -529,6 +682,20 @@ onBeforeUnmount(() => {
       </span>
     </footer>
 
+    <div class="toast-region" aria-live="polite" aria-atomic="true">
+      <AppToast
+        v-if="updateReady"
+        :message="t.update"
+        :action-label="t.reload"
+        @action="reloadApp"
+      />
+      <AppToast
+        v-if="workspaceNotice"
+        :message="workspaceNotice"
+        :kind="workspaceNoticeError ? 'error' : 'success'"
+      />
+    </div>
+
     <div v-if="vimConfigOpen" class="config-backdrop" @click.self="vimConfigOpen = false">
       <section class="config-panel" role="dialog" aria-modal="true" :aria-label="t.config">
         <div class="config-heading">
@@ -540,7 +707,7 @@ onBeforeUnmount(() => {
         <ul v-if="configWarnings.length" class="config-warnings">
           <li v-for="warning in configWarnings" :key="warning">{{ warning }}</li>
         </ul>
-        <button class="apply-button" type="button" @click="applyConfig">{{ t.apply }}</button>
+        <button class="apply-button" type="button" @click="applyConfig(true)">{{ t.apply }}</button>
         <div class="data-tools">
           <div>
             <h3>{{ t.learningData }}</h3>
@@ -559,6 +726,19 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <p v-if="backupError" class="data-error" role="alert">{{ backupError }}</p>
+      </section>
+    </div>
+
+    <div v-if="previewOpen" class="config-backdrop" @click.self="previewOpen = false">
+      <section class="file-preview-panel" role="dialog" aria-modal="true" :aria-label="t.readOnlyPreview">
+        <div class="config-heading">
+          <div>
+            <span>{{ t.readOnlyPreview }}</span>
+            <h2>{{ previewFileName }}</h2>
+          </div>
+          <button type="button" :aria-label="t.closePreview" @click="previewOpen = false">×</button>
+        </div>
+        <pre><code>{{ previewSource }}</code></pre>
       </section>
     </div>
   </div>

@@ -4,6 +4,17 @@ export interface Lesson {
   id: string
   titles: Record<Locale, string>
   files: Record<Locale, string>
+  workspaceFiles?: CourseWorkspaceFile[]
+}
+
+export type CourseFileLanguage = 'markdown' | 'vim' | 'javascript'
+export type CourseFileRole = 'config' | 'exercise'
+
+export interface CourseWorkspaceFile {
+  name: string
+  role: CourseFileRole
+  language: CourseFileLanguage
+  files: Record<Locale, string>
 }
 
 export interface CourseManifest {

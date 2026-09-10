@@ -16,6 +16,12 @@ const lessonIds = Array.from(
   { length: 11 },
   (_, index) => `chapter${String(index + 1).padStart(2, '0')}`,
 )
+const workspaceFilesByLesson = {
+  chapter04: [
+    { name: 'vimrc.vim', role: 'config', language: 'vim' },
+    { name: 'chapter04-demo.js', role: 'exercise', language: 'javascript' },
+  ],
+}
 
 function titleOf(markdown, fallback) {
   return markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() || fallback
@@ -52,14 +58,19 @@ for (const id of lessonIds) {
     files[locale] = relativePath
   }
 
-  lessons.push({ id, titles, files })
+  const workspaceFiles = workspaceFilesByLesson[id]?.map((file) => ({
+    ...file,
+    files: Object.fromEntries(locales.map((locale) => [locale, `${locale}/${file.name}`])),
+  }))
+
+  lessons.push({ id, titles, files, ...(workspaceFiles ? { workspaceFiles } : {}) })
 }
 
 const sourceRevision = await gitValue(['rev-parse', 'HEAD'], 'local-content')
 const generatedAt = await gitValue(['show', '-s', '--format=%cI', 'HEAD'], new Date().toISOString())
 
 const manifest = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   generatedAt,
   source: 'dofy/learn-vim',
   sourceRevision,

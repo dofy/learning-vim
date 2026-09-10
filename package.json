@@ -1,7 +1,7 @@
 {
   "name": "learning-vim",
   "private": true,
-  "version": "1.2.3",
+  "version": "2.1.0",
   "type": "module",
   "scripts": {
     "sync:content": "node scripts/sync-content.mjs",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",
+    "@codemirror/lang-javascript": "^6.2.5",
     "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/language": "^6.12.4",
     "@codemirror/state": "^6.7.4",

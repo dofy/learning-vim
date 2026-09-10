@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { defaultKeymap, history, historyKeymap, indentLess } from '@codemirror/commands'
+import { javascript } from '@codemirror/lang-javascript'
 import { markdown } from '@codemirror/lang-markdown'
 import { HighlightStyle, indentUnit, syntaxHighlighting } from '@codemirror/language'
 import { Compartment, EditorSelection, EditorState, type EditorState as CodeMirrorState, type Extension } from '@codemirror/state'
@@ -7,14 +8,17 @@ import { drawSelection, EditorView, gutter, GutterMarker, highlightSpecialChars,
 import { Vim, vim, getCM } from '@replit/codemirror-vim'
 import { tags } from '@lezer/highlight'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { shouldLoadMarkdownLanguage, shouldReconfigureLanguage } from '../editorLanguage'
+import { languageNeedsParser, shouldReconfigureLanguage } from '../editorLanguage'
 import { formatVimLineNumber, shouldShowLineNumbers } from '../lineNumbers'
-import type { EditorStatus, VimMapping, VimPreferences } from '../types'
+import type { CourseFileLanguage, EditorStatus, VimMapping, VimPreferences } from '../types'
 import { attachVimOptionController, registerVimOptionBridge, type VimOptionController } from '../vimBridge'
+import { attachSystemClipboard, type ClipboardResult } from '../vimClipboard'
 
 const props = defineProps<{
   modelValue: string
   sourceValue: string
+  fileName: string
+  language: CourseFileLanguage
   preferences: VimPreferences
   mappings: VimMapping[]
 }>()
@@ -22,7 +26,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   'preferences-change': [value: VimPreferences]
-  'open-lesson': [lessonId: string]
+  'open-course-file': [fileName: string]
+  'source-current-file': [fileName?: string]
+  clipboard: [result: ClipboardResult]
   status: [value: EditorStatus]
 }>()
 
@@ -39,6 +45,7 @@ const languageCompartment = new Compartment()
 const highlightingCompartment = new Compartment()
 let editor: EditorView | undefined
 let editorController: VimOptionController | undefined
+let detachClipboard: (() => void) | undefined
 let appliedMappings: VimMapping[] = []
 let runtimePreferences: VimPreferences = { ...props.preferences }
 
@@ -50,6 +57,11 @@ const learningVimHighlightStyle = HighlightStyle.define([
   { tag: tags.monospace, color: '#f0a985' },
   { tag: tags.quote, color: '#9db3c2', fontStyle: 'italic' },
   { tag: tags.contentSeparator, color: '#6e8799' },
+  { tag: [tags.keyword, tags.bool, tags.null], color: '#ff916b', fontWeight: '650' },
+  { tag: [tags.function(tags.variableName), tags.definition(tags.variableName)], color: '#f3c776' },
+  { tag: [tags.string, tags.number], color: '#8fd0c9' },
+  { tag: tags.comment, color: '#7890a2', fontStyle: 'italic' },
+  { tag: [tags.operator, tags.punctuation], color: '#b8c8d3' },
 ])
 
 class VimLineNumberMarker extends GutterMarker {
@@ -97,7 +109,9 @@ function indentationExtension(preferences: VimPreferences): Extension {
 }
 
 function languageExtension(preferences: VimPreferences): Extension {
-  return shouldLoadMarkdownLanguage(preferences) ? markdown() : []
+  if (!languageNeedsParser(props.language, preferences)) return []
+  if (props.language === 'javascript') return javascript()
+  return markdown()
 }
 
 function highlightingExtension(preferences: VimPreferences): Extension {
@@ -182,6 +196,8 @@ function applyMappings() {
 function createEditor() {
   if (!host.value) return
   editor?.destroy()
+  detachClipboard?.()
+  host.value.replaceChildren()
   applyMappings()
   runtimePreferences = { ...props.preferences }
 
@@ -223,10 +239,19 @@ function createEditor() {
   editorController = {
     preferences: runtimePreferences,
     update: updateRuntimePreferences,
-    openLesson: (lessonId) => emit('open-lesson', lessonId),
+    openCourseFile: (fileName) => emit('open-course-file', fileName),
+    sourceCurrentFile: (fileName) => emit('source-current-file', fileName),
   }
   viewControllers.set(editor, editorController)
   if (cm) attachVimOptionController(cm, editorController)
+  detachClipboard = attachSystemClipboard(
+    Vim.getRegisterController(),
+    (text) => {
+      if (!navigator.clipboard?.writeText) return Promise.reject(new Error('Clipboard API unavailable'))
+      return navigator.clipboard.writeText(text)
+    },
+    (result) => emit('clipboard', result),
+  )
   editor.dom.classList.toggle('vim-no-hlsearch', !runtimePreferences.highlightSearch)
   reportStatus(editor.state)
   editor.focus()
@@ -235,6 +260,7 @@ function createEditor() {
 onMounted(createEditor)
 onBeforeUnmount(() => {
   clearMappings()
+  detachClipboard?.()
   editor?.destroy()
 })
 
@@ -250,6 +276,8 @@ watch(
 )
 
 watch(() => props.mappings, applyMappings, { deep: true })
+
+watch(() => [props.fileName, props.language], createEditor)
 
 watch(
   () => props.modelValue,
